@@ -1,0 +1,20 @@
+# Roadmap
+
+This is the **sole phase registry** for the project. Every task that
+belongs to a phase is listed here, under that phase, and nowhere else —
+tasks never declare their phase in their own spec file (that would
+drift). The invariant: *in `ROADMAP.md` ⟺ has a phase ⟺ triaged.* Tasks
+parked in `tasks/triage/` are deliberately unphased and do **not** appear
+here until they graduate.
+
+Each phase has three things: a **name** ("Phase N: \<short
+noun-phrase\>"), a **scope paragraph** (2–4 sentences saying what's in,
+what's out, and what success looks like — this is the contract), and an
+**ordered list of tasks** (`- TASK-NNN — <title>`, order implying
+suggested ship order).
+
+---
+
+_No phases yet — add your first phase when you have planned work. Don't
+create empty phases speculatively; write the phase when there's a task to
+put under it._

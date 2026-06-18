@@ -1,0 +1,135 @@
+{
+  "$schema": "https://rasa-os.github.io/schema/rasa.schema.v1.json",
+  "contract_version": "1.3.0",
+  "name": "rasa.module.tasks",
+  "version": "0.1.0",
+  "kind": "module",
+  "aliases": [
+    "module-tasks"
+  ],
+  "description": "Portable task-management lifecycle (intake → triage → backlog → active ⇄ blocked → completed), mountable into any domain or orchestrator. Distilled from rasa.domain.code; engineering specifics replaced by a domain-defined done-gate.",
+  "source": {
+    "repo": "https://github.com/RasaOS/module-tasks",
+    "branch": "main"
+  },
+  "tier": "Pro",
+  "capabilities": [
+    "task.lifecycle-orchestration",
+    "task.intake-triage",
+    "task.phase-planning",
+    "task.change-audit"
+  ],
+  "permissions": [
+    "fs:write",
+    "shell:exec"
+  ],
+  "requires": {
+    "parent_kind": [
+      "domain",
+      "orchestrator"
+    ]
+  },
+  "rasa": {
+    "role": "L1-mountable-capability",
+    "shape_pattern": "toolkit",
+    "note": "First module-kind Element. Mounts into a parent domain or orchestrator and installs a portable task lifecycle. The one domain-specific concern — what 'done' means — is delegated to a project-owned .claude/done-gate.md (seeded here, skip-if-exists). Domains extend via .claude/<domain>-task-rules.md."
+  },
+  "element": {
+    "description": "Element-owned task-management files mirrored into the install target's .claude/ per canon ELEMENT_CONTRACT.md §7. Refreshed on Element upgrade. The done-gate and the tasks/ ledger are NOT here — they are project-owned (see seed.files).",
+    "files": [
+      {
+        "from": "content/task-rules.md",
+        "to": ".claude/task-rules.md",
+        "policy": "file-replace",
+        "note": "The portable, domain-agnostic task lifecycle spine. Element-owned; refreshed on upgrade. References .claude/done-gate.md for the verification contract and .claude/<domain>-task-rules.md for domain extensions — it hardcodes neither."
+      },
+      {
+        "from": "content/task-templates/",
+        "to": ".claude/task-templates/",
+        "policy": "directory-mirror",
+        "note": "The four category templates (stub / spec / bug / hotfix). Element-owned; refreshed on upgrade. Generalized — no src/e2e/PR/build references."
+      },
+      {
+        "from": "content/skills/",
+        "to": ".claude/skills/",
+        "policy": "directory-mirror",
+        "note": "Task-management skills: /task (lifecycle driver), /backlog (read+render), /roadmap (read+render). Element-owned; refreshed on upgrade."
+      },
+      {
+        "from": "content/README.md",
+        "to": "content/README.md",
+        "policy": "opt-in",
+        "note": "Describes what this module ships and how it installs. Fork/author-time doc; not installed into consumer projects."
+      }
+    ]
+  },
+  "seed": {
+    "description": "One-time, project-owned files copied at install only (skip-if-exists), per canon ELEMENT_CONTRACT.md §7. These belong to the consuming project after install and are never overwritten on Element upgrade — the project's done-gate, its task ledger, and the lifecycle scaffold.",
+    "files": [
+      {
+        "from": "seed/done-gate.md.template",
+        "to": ".claude/done-gate.md",
+        "policy": "skip-if-exists",
+        "note": "The per-domain verification contract — what 'done' requires. Project-owned; the domain fills it (code = build+test+review; legal = conflict-check + partner sign-off; etc.). Ships with a minimum-honest default + commented domain examples. Placeholder-free per the documented skip-if-exists policy gap."
+      },
+      {
+        "from": "seed/tasks/README.md.template",
+        "to": "tasks/README.md",
+        "policy": "skip-if-exists",
+        "note": "Human orientation to the tasks/ folder: the lifecycle, the dirs, intake vs triage, categories, the done-gate pointer."
+      },
+      {
+        "from": "seed/tasks/intake.md.template",
+        "to": "tasks/intake.md",
+        "policy": "skip-if-exists",
+        "note": "Starter pre-triage capture file. Project-owned; appended to over the life of the project."
+      },
+      {
+        "from": "seed/tasks/ROADMAP.md.template",
+        "to": "tasks/ROADMAP.md",
+        "policy": "skip-if-exists",
+        "note": "Starter phase registry — the SOLE source of phase membership. Project-owned."
+      },
+      {
+        "from": "seed/tasks/triage/.gitkeep",
+        "to": "tasks/triage/.gitkeep",
+        "policy": "skip-if-exists",
+        "note": "Lifecycle dir scaffold (bin/init does not implement scaffold.directories, so the dirs ship as seed .gitkeeps). Tracked-but-untriaged tasks."
+      },
+      {
+        "from": "seed/tasks/backlog/.gitkeep",
+        "to": "tasks/backlog/.gitkeep",
+        "policy": "skip-if-exists",
+        "note": "Lifecycle dir scaffold. Phase-placed, category-assigned tasks."
+      },
+      {
+        "from": "seed/tasks/active/.gitkeep",
+        "to": "tasks/active/.gitkeep",
+        "policy": "skip-if-exists",
+        "note": "Lifecycle dir scaffold. In-flight tasks (at most one per worker)."
+      },
+      {
+        "from": "seed/tasks/blocked/.gitkeep",
+        "to": "tasks/blocked/.gitkeep",
+        "policy": "skip-if-exists",
+        "note": "Lifecycle dir scaffold. Parked tasks with an external blocker."
+      },
+      {
+        "from": "seed/tasks/completed/.gitkeep",
+        "to": "tasks/completed/.gitkeep",
+        "policy": "skip-if-exists",
+        "note": "Lifecycle dir scaffold. Terminal state — acceptance criteria met and the done-gate passed."
+      },
+      {
+        "from": "seed/rasa.lock.json.template",
+        "to": ".claude/rasa.lock.json",
+        "policy": "init-only-with-sha",
+        "note": "Stamped with the Element HEAD commit SHA at init time. Lockfile shape per canon Spec §6 (Connection Contract). NOTE: when this module is co-installed under a parent domain that also stamps a lockfile, the parent's is authoritative (single-writer-per-path, Lock L-004); in the kernel pull model each Element gets its own holding folder, so no collision. Substitutes the standard {{ELEMENT_*}} / {{TODAY}} placeholders via bin/init."
+      }
+    ]
+  },
+  "scaffold": {
+    "description": "Empty directories created at init by the declarative installer. The tasks/ lifecycle dirs ship as seed .gitkeeps instead (bin/init does not implement scaffold.directories), so this stays empty.",
+    "directories": []
+  }
+}

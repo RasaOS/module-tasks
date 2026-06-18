@@ -1,0 +1,83 @@
+# Done-Gate
+
+**This file is yours.** `rasa.module.tasks` ships the portable task
+lifecycle (`.claude/task-rules.md`), but it deliberately does not decide
+what *done* means in your domain — that is the one thing that varies.
+This file is where you define it.
+
+A task leaves `active/` for `completed/` only when **both** hold:
+
+1. every acceptance criterion in the task spec is met and verified, and
+2. **every gate below passes.**
+
+Each gate must be **objectively checkable** — a command that exits zero,
+a named reviewer's approval, a produced document — never a feeling.
+Never bypass a gate to ship faster.
+
+---
+
+## Gates (EDIT THIS)
+
+> Replace the default below with your domain's real gates. Until you do,
+> the minimum honest bar applies: acceptance criteria checked **and** a
+> second party has reviewed and approved. Running on the default is a
+> smell, not a destination.
+
+- [ ] **Acceptance criteria** — every checklist item in the task spec is
+      satisfied and individually verified.
+- [ ] **Independent review** — a second party (not the author) has
+      reviewed the work and approved.
+
+---
+
+## Examples — delete the ones you don't need
+
+> Pick the block that matches your domain, paste its gates above, and
+> tune them. These are illustrative, not prescriptive.
+
+### Software domain (`rasa.domain.code`)
+
+```markdown
+- [ ] Build — `<project build command>` succeeds with no new warnings.
+- [ ] Verification suite — `<project test command>` passes headless.
+- [ ] Local run — the implemented flow boots and works.
+- [ ] No console / log errors on the affected paths.
+- [ ] PR opened with task link, acceptance checklist, and verification output.
+```
+
+### Legal domain (`rasa.domain.legal`)
+
+```markdown
+- [ ] Conflict check cleared for the matter.
+- [ ] Cite-check / authority verification complete.
+- [ ] Privilege and confidentiality handling confirmed.
+- [ ] Supervising attorney review and sign-off.
+- [ ] Filing-deadline / docketing requirements satisfied.
+```
+
+### Health domain (`rasa.domain.health`)
+
+```markdown
+- [ ] Clinical-rule validation passes for the affected pathway.
+- [ ] PHI handling reviewed (no leakage; audit trail intact).
+- [ ] Compliance / regulatory sign-off recorded.
+- [ ] Clinical reviewer approval.
+```
+
+### Writing domain (`rasa.domain.writer`)
+
+```markdown
+- [ ] Continuity check against the bible (characters, timeline, canon).
+- [ ] Voice / style pass against the project's voice ledger.
+- [ ] Editorial review and approval.
+```
+
+---
+
+## Enforcement note
+
+How you *enforce* "every change is task-linked" is also domain-specific
+and belongs here or in your `.claude/<domain>-task-rules.md`: a software
+domain may wire a pre-commit `task-guard` hook; a domain whose changes
+are document revisions enforces it at its own checkpoint. The rule holds
+either way (see `.claude/task-rules.md` → "Every change is task-linked").
