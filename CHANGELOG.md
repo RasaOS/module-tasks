@@ -4,6 +4,12 @@ Reverse-chronological. Each entry is a version bump.
 
 ---
 
+## 0.1.1 — 2026-07-09
+
+### `parent_kind` → `[domain, tenant]` (canon SA-023)
+
+- The `orchestrator` kind was folded into `tenant`; this module now mounts into a tenant or a domain (`requires.parent_kind: ["domain", "tenant"]`, was `["domain", "orchestrator"]`).
+
 ## 0.1.0 — 2026-06-18 — INITIAL
 
 **The first `module`-kind Element in the RasaOS substrate.** A portable
