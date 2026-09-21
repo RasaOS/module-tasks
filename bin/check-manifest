@@ -189,14 +189,25 @@ def repo_inventory():
     tracked file someone deleted without updating the manifest. Take both,
     and work without either one being available.
     """
+    # Pruning EVERY hidden directory was a hole: `directory-mirror` is
+    # shutil.copytree, which copies hidden subdirectories happily, so a
+    # `content/task-templates/.hidden/leak.md` shipped to every consumer while
+    # being invisible to both the coverage check and the hard-rule scan — the
+    # gate printed "Shippable". Verified by reproduction. Under content/ and
+    # seed/ — the only trees that actually ship — nothing is pruned but the
+    # named tooling dirs. Elsewhere the broad hidden-prune still applies, so
+    # .git, worktrees and virtualenvs stay out of the walk.
+    NEVER_WALK = ("node_modules", "__pycache__", ".git")
+    SHIPPED_ROOTS = (os.path.join(REPO_ROOT, "content"), os.path.join(REPO_ROOT, "seed"))
+
     walked = []
     for dirpath, dirnames, filenames in os.walk(REPO_ROOT):
-        # Prune every hidden directory (version-control internals, nested
-        # working copies, virtualenvs) and the usual vendored trees. Hidden
-        # FILES (.gitignore, .gitkeep) are kept.
-        dirnames[:] = sorted(d for d in dirnames
-                             if not d.startswith(".")
-                             and d not in ("node_modules", "__pycache__"))
+        in_shipped = any(dirpath == r or dirpath.startswith(r + os.sep)
+                         for r in SHIPPED_ROOTS)
+        dirnames[:] = sorted(
+            d for d in dirnames
+            if d not in NEVER_WALK and (in_shipped or not d.startswith("."))
+        )
         for name in sorted(filenames):
             if is_cruft(name):
                 continue

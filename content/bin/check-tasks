@@ -1249,11 +1249,28 @@ def check_phase_map(ledger, pm):
             fixes.map_insert.append((phase, tf.tid, tf.title or "(untitled)"))
             continue
         if len(entries) > 1:
+            doomed = correct[1:] + wrong
+            # Deleting a duplicate line is mechanical. Deleting the note somebody
+            # hand-wrote ON that line is a human judgement, and --fix promises it
+            # never makes one. A line carrying words the kept line does not have
+            # is therefore reported and left alone, not silently removed.
+            prose = [e for e in doomed
+                     if roadmap_line_residue(pm.lines[e["line"]], tf.tid, tf.title)]
+            if prose:
+                report.error(
+                    "I-22",
+                    "%s is listed %d times in %s, and %d of the extra line(s) carry text the "
+                    "kept line does not" % (tf.tid, len(entries), pm.rel, len(prose)),
+                    where=pm.rel, line=prose[0]["line"] + 1, fixable=False,
+                    hint="not auto-fixable: delete the duplicate yourself, moving anything "
+                         "worth keeping onto the line under phase '%s' first — e.g. %r"
+                         % (phase, pm.lines[prose[0]["line"]].strip()))
+                continue
             report.error("I-22", "%s is listed %d times in %s" % (tf.tid, len(entries), pm.rel),
                          where=pm.rel, line=entries[0]["line"] + 1, fixable=True,
                          hint="--fix keeps the one under phase '%s' and deletes the rest"
                               % phase)
-            for entry in correct[1:] + wrong:
+            for entry in doomed:
                 fixes.map_remove.append(entry["line"])
         # I-23 title drift
         if tf.title and correct[0]["title"] != tf.title:
@@ -1500,6 +1517,20 @@ def apply_history_fixes(log_path, additions, label=None):
         handle.write(header + "\n")
         handle.write("\n".join(rows) + "\n")
     return done
+
+
+def roadmap_line_residue(line, task_id, title):
+    """What a ROADMAP task line says beyond its id and title, if anything.
+
+    Used to tell a mechanically-removable duplicate from one somebody
+    annotated. Returns "" when the line is just `- <id> — <title>`.
+    """
+    text = (line or "").strip().lstrip("-*").strip()
+    for chunk in (task_id or "", title or ""):
+        if chunk:
+            text = text.replace(chunk, " ")
+    text = re.sub(r"[\s—–·:\-]+", " ", text).strip()
+    return text
 
 
 def apply_map_fixes(pm, removals, insertions):
