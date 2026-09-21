@@ -110,3 +110,39 @@ hook, schema-mirror discipline, `ios-`/`web-task-rules.md` — was
   stamps `.claude/rasa.lock.json`, the parent's is authoritative; the
   kernel pull model gives each Element its own holding folder, so no
   real collision (see `rasa.json` seed note).
+
+## v0.2.0 — 2026-09-21
+
+### The task stamp gains the fields that make a task auditable
+
+Ported up from `rasa.domain.code` v0.50.0, where they were adopted and proven,
+so the portable core carries them rather than one domain having them privately.
+
+`owner`, `blocked_by`, `outcome`, `filed`, `origin` join the canonical
+frontmatter and all four templates. All optional, each with a declared default,
+so no existing task file becomes invalid and none needs re-filing — the
+`### Backwards compatibility` clause is now a full absence-default table.
+
+Two of these carry reasoning worth keeping:
+
+- **`owner` is not a per-run actor.** One task is attempted across many runs, so
+  a run identity recorded on the task is overwritten by the second attempt,
+  destroying the history it was meant to record. Run identity belongs on a run
+  record.
+- **`outcome` is never inferred** from `status: completed` or from living in
+  `completed/`. A task can reach `completed/` having been reverted or
+  superseded, and a system that guesses cannot tell those apart.
+
+#### Two things deliberately NOT ported
+
+- **`phase:` stays out of frontmatter.** domain-code ships it and corrected its
+  own rule to call it a denormalized cache. This module's position — phase lives
+  in `ROADMAP.md` and nowhere else — is the portable one, and a domain that wants
+  the cache can carry it as a domain extension. The module does not adopt a
+  second source of truth.
+- **`task-guard` is not moved here.** "Domain extensions" already names it as
+  belonging to the software domain, and that is right: it is a pre-commit hook
+  bound to branch/PR conventions, not to task discipline.
+
+---
+

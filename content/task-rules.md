@@ -323,8 +323,35 @@ work is this, and how do we treat it?*
 id: TASK-042            # or HOTFIX-042 for the Hotfix category
 category: spec          # stub | spec | bug | hotfix
 status: backlog         # triage | backlog | active | blocked | completed
+owner: unassigned       # accountable human/team/agent — NOT the per-run actor
+blocked_by:             # comma-separated task ids this waits on
+outcome: unrecorded     # unrecorded | shipped | reverted | superseded
+filed: 2026-09-21 05:00 UTC
+origin: manual          # manual | auto-fallback | auto-guard
 ---
 ```
+
+Everything after `status` is **optional**, with a declared default when
+absent — see "Backwards compatibility" below. No existing task needs
+re-filing.
+
+- **`owner`** — who is accountable. Durable and single-valued. It is
+  *not* the actor of a particular run: one task is attempted across
+  many runs, so a per-run identity recorded here is overwritten by the
+  second attempt. Run identity belongs on a run record, not on the task.
+- **`blocked_by`** — a task-graph edge (`TASK-012, TASK-014`), distinct
+  from the *external* dependency named in a `## Blocker` prose section.
+- **`outcome`** — how the work ended up, and **never inferred** from
+  `status: completed` or from living in `completed/`. A task can reach
+  `completed/` having been reverted or superseded, and a system that
+  guesses cannot tell the difference. Moving the file does not set it.
+- **`filed`** / **`origin`** — when the file was created, and how it came
+  to exist. `auto-fallback` and `auto-guard` mark files minted by a
+  guard rather than written by someone.
+
+**Do not put a comment on its own line inside frontmatter.** A standalone
+`#` line is a YAML comment, but title parsers commonly take the first
+`# ` line as the task's title. Keep comments inline, as above.
 
 There is **no `phase:` field** in a task's frontmatter — phase
 membership lives in `ROADMAP.md` and nowhere else (see "Phase
@@ -361,7 +388,25 @@ expanded later; a `hotfix` always has full content.
 
 ### Backwards compatibility
 
-Tasks with no `category:` frontmatter default to `category: spec`.
+Every field is optional and has a declared default when absent. Adding
+fields never requires re-filing an existing task, and a task file with no
+`---` block at all remains valid.
+
+| Field | Absent means |
+|---|---|
+| `id` | parse it from the filename — the filename is authoritative either way |
+| `category` | `spec` |
+| `status` | the directory the file is in |
+| `owner` | `unassigned` — never guessed |
+| `blocked_by` | no declared dependency |
+| `outcome` | `unrecorded` — **never** inferred from `status: completed` or from living in `completed/` |
+| `filed` | unknown — never synthesized |
+| `origin` | `manual` |
+| `severity` | not meaningful outside `bug` and `hotfix` |
+
+This is why adding them is a MINOR change: a reader that wants a value
+resolves the default, and no existing file becomes invalid. Making any of
+them required would be breaking.
 Adding categories does not require re-filing existing tasks.
 
 ## Adding tasks to the backlog (priority rule)
