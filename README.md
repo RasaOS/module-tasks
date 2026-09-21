@@ -2,7 +2,7 @@
 
 **Canonical name:** `rasa.module.tasks`
 **Repo / folder:** `module-tasks`
-**Kind:** `module` (canon Spec §6 — *a focused capability that extends a domain or orchestrator, mountable into one or more parents*)
+**Kind:** `module` (canon Spec §6 — *a focused capability that extends a tenant or domain, mountable into one or more parents*)
 **Contract:** Element Contract v1.3.0
 **Version:** 1.0.0
 **Status:** Live. The **first `module`-kind Element** in the RasaOS substrate.
@@ -75,7 +75,7 @@ output-styles / stamps / craft-rules only.)
 
 ## Install / mount
 
-A parent domain or orchestrator opts in via its own `rasa.json`:
+A parent tenant or domain opts in via its own `rasa.json`:
 
 ```json
 "requires": {

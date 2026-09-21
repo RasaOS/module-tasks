@@ -69,10 +69,20 @@ SECTION_POLICIES = {
 # The policies whose `from` must be a directory. Everything else: a file.
 DIRECTORY_POLICIES = ("directory-mirror",)
 
-KINDS = ("domain", "orchestrator", "module", "core", "kernel",
+KINDS = ("domain", "orchestrator", "module", "core", "kernel",  # orchestrator: retained for pre-SA-023 Elements not yet migrated
          "frontend", "recipe", "tenant")
 TIERS = ("Free", "Pro", "Enterprise")
-PARENT_KINDS = ("domain", "orchestrator")
+# Canon SA-023 (absorbed 2026-07-09) folded the `orchestrator` kind into
+# `tenant`: eight kinds became seven, and a module now mounts into a tenant or
+# a domain. ELEMENT_CONTRACT §6 upstream reads *subset of ["domain","tenant"]
+# (v1.4+, was ["domain","orchestrator"])*, and RasaOS/schema ships that enum.
+#
+# This inline table is only a FALLBACK for when the schema repo is not on the
+# machine. It drifted once already — written from a stale checkout, it then
+# contradicted the canonical validator it was meant to stand in for, which is
+# the exact failure mode a hardcoded copy invites. When they disagree, the
+# canonical validator is right and this list is stale.
+PARENT_KINDS = ("domain", "tenant")
 
 SEMVER_RE = re.compile(
     r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"

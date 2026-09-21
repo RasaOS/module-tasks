@@ -27,13 +27,13 @@
   "requires": {
     "parent_kind": [
       "domain",
-      "orchestrator"
+      "tenant"
     ]
   },
   "rasa": {
     "role": "L1-mountable-capability",
     "shape_pattern": "toolkit",
-    "note": "The first module-kind Element. Mounts into a parent domain or orchestrator and installs a portable task lifecycle. The one domain-specific concern - what 'done' means - is delegated to a project-owned .claude/done-gate.md (seeded here, skip-if-exists); domains extend further via .claude/<domain>-task-rules.md. v1.0.0 is a clean break from 0.1.x: the frontmatter schema changed, the terminal transitions gained commands that perform them, and the substrate features 0.1.2/0.1.3 bolted on (the source clone, /sync, /promote, /whoami, the identity stamp, parent_kind tenant) were removed - they were a module claiming what its parent owns, and they cited canon amendment numbers that do not exist. A module claims only paths inside its own capability vocabulary: .claude/task-rules.md, .claude/task-templates/, the task/backlog/roadmap skills, .claude/bin/, .claude/done-gate.md and the tasks/ ledger. bin/migrate-tasks converts a 0.1.x ledger and is deliberately NOT installed - it is the one place allowed to read a version-control history, which is exactly why it must never reach content/."
+    "note": "First module-kind Element. Mounts into a parent tenant or domain and installs a portable task lifecycle. The one domain-specific concern - what 'done' means - is delegated to a project-owned .claude/done-gate.md (seeded here, skip-if-exists). Domains extend via .claude/<domain>-task-rules.md."
   },
   "element": {
     "description": "Element-owned files mirrored into the install target per canon ELEMENT_CONTRACT.md §7. Refreshed on every Element upgrade, so nothing here may hold project state. The done-gate and the tasks/ ledger are NOT here - they are project-owned (see seed.files). Every file below is domain-neutral and is scanned for that by bin/check-manifest's hard-rule check before release.",

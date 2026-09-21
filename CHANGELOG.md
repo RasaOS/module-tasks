@@ -11,52 +11,65 @@ shape all change. A 0.1.x ledger does not validate under 1.0.0 and is not
 meant to — `bin/migrate-tasks` converts it mechanically. Read
 [Migration](#migration) before upgrading a project that already has tasks.
 
-### First, the honest part: what v0.1.1, v0.1.2 and v0.1.3 did
+### A correction this release has to make about itself
 
-All three releases justified themselves with canon amendments **that do not
-exist**.
+An earlier v1.0.0 build asserted that v0.1.1, v0.1.2 and v0.1.3 had each
+justified themselves with a canon amendment that did not exist, and
+reverted `requires.parent_kind` from `["domain","tenant"]` to
+`["domain","orchestrator"]` on that basis. **That assertion was wrong, and
+the revert was a regression.** It is retracted here.
 
-- v0.1.1 cited **SA-023** for folding `orchestrator` into `tenant`.
-- v0.1.2 cited **SA-024** for a source-clone-aware installer plus `/sync`
-  and `/promote`.
-- v0.1.3 cited **SA-025** for a three-layer Element identity.
+**SA-023 is real.** `canon/tasks/triage/SA-023-orchestrator-folded-into-tenant.md`
+was absorbed on 2026-07-09 and sits in `canon/tasks/done/`. It folds the
+`orchestrator` kind into `tenant` — eight kinds become seven — and names
+this exact change among its target docs: *"elements/ELEMENT_CONTRACT.md
+(§2 seven kinds; §6 module parent_kind)"* and *"rasa.schema.v1.json
+(downstream: kind enum 8→7; module parent_kind [domain,tenant])"*.
+ELEMENT_CONTRACT §2 upstream reads **"The seven valid kinds"**, §6 reads
+*subset of `["domain","tenant"]` (v1.4+, was `["domain","orchestrator"]`)*,
+and `RasaOS/schema` ships that enum. **v0.1.1 was right.**
 
-In the canon those three numbers belong to three unrelated proposals, all
-still sitting unlocked in `canon/tasks/triage/`: SA-023 is foreign-framework
-plugin import, SA-024 is the unified Capability surface, SA-025 is the
-kernel FileManager service. `grep -rn "SA-02[345]" canon/` returns no
-amendment that renames a kind, defines those verbs, or defines an identity
-layer; `canon/AUDIT.md` — the ledger those changes were required to append
-to — has no entry for any of the three releases; `orchestrator` is still one
-of the eight kinds in the LOCKED v1.3.0 contract, and six orchestrator-kind
-Elements are live in the registry.
+The error was mine and it was methodological: the claim was checked against
+a local `canon/` checkout **35 commits stale** and a local `schema/`
+checkout 3 commits stale, and never fetched. In that stale tree SA-023 was
+a different proposal — *foreign-framework plugin import*, since renumbered
+upstream to **SA-032** — which is precisely how a real amendment came to
+look like a fabricated one. A claim about what canon says is worth exactly
+as much as the freshness of the canon it was read from.
 
-The consequences were not cosmetic:
+`requires.parent_kind` is therefore `["domain","tenant"]`, matching canon,
+the schema, and every sibling module on the remote.
 
-- `requires.parent_kind: ["domain","tenant"]` **failed the substrate's own
-  JSON Schema** (`'tenant' is not one of ['domain','orchestrator']`), so the
-  Element could not be pulled by any conformance-checking consumer, and the
-  workspace conformance sweep failed on it. `bin/check-manifest` reported
-  GREEN throughout, because it only reconciled file paths.
-- The same manifest contradicted itself three lines below the field, its
-  `description` still saying "domain or orchestrator" — as did README.md,
-  `content/README.md` and an entire section of the spine.
-- `bin/init` cloned the whole Element source into `<project>/kit/<element>/`
-  — an undeclared nested repository at the consumer's project root, under a
-  directory name the canon vocabulary lock forbids outright.
+**On SA-024 and SA-025**, cited by v0.1.2 and v0.1.3: upstream those ids
+currently denote the unified Capability surface and the kernel FileManager
+service, both still in `triage/`, and neither describes `/sync` + `/promote`
+or a three-layer identity. But given SA-023 was renumbered out from under
+its own citation, **this release does not repeat the charge** — the honest
+statement is that no canon backing for those two features could be located,
+not that the citations were invented. (`SA-019`, *holding folder + promote
+sync model*, is done and is the nearest real backing for the sync/promote
+concept.)
+
+### What v1.0.0 still removes, and why — independent of any citation
+
+`/sync`, `/promote`, `/whoami`, the identity stamp and the `kit/` clone are
+deleted, on their own merits and with the owner's agreement:
+
 - `bin/init` wrote `.claude/rasa-identity.md` unconditionally, so a
   consuming project was told it *was* `rasa.module.tasks`. Byte-identical
-  copies shipped from `domain-legal`, so the answer to "who is this project"
-  belonged to whichever Element happened to initialize last.
-- `/sync`, `/promote` and `/whoami` installed under `directory-mirror`, which
-  is `copytree(dirs_exist_ok=True)` — they silently overwrote the same-named
-  skills of `domain-code` and `domain-writer`.
+  copies ship from other Elements, so the answer to "who is this project"
+  belonged to whichever Element initialized last.
+- `/sync`, `/promote` and `/whoami` install under `directory-mirror`, which
+  is `copytree(dirs_exist_ok=True)` — they silently overwrote the
+  same-named but different skills of `domain-code`, `domain-legal` and
+  `domain-writer`.
+- The source clone landed an undeclared nested repository at the consumer's
+  project root under `kit/`, a directory name the canon vocabulary lock
+  (ELEMENT_CONTRACT §8) forbids.
 
-**v1.0.0 reverts all of it.** `requires.parent_kind` is back to
-`["domain","orchestrator"]` and the manifest validates against
-`RasaOS/schema` v0.1.0 (verified, not asserted). The source clone, the
-identity stamp, `/sync`, `/promote` and `/whoami` are deleted. A module
-mounts under a parent; it does not speak for one.
+A module is a mounted capability; it does not speak for its parent. None of
+that reasoning depended on the citation question, and none of it changes.
+
 
 The releases shipped because the release gate could not see any of it. That
 is fixed below, and it is the reason this version is 1.0.0 rather than
@@ -247,13 +260,13 @@ Both are withdrawn. The list now names only what ships:
 
 ## 0.1.3 — 2026-07-09 — **REVERTED in 1.0.0**
 
-### ~~Element identity layer (canon SA-025)~~ — the citation is false
+### Element identity layer (cited canon SA-025) — REMOVED in 1.0.0; citation unverified
 
 ~~Added `rasa.identity`; `bin/init` generates `.claude/rasa-identity.md` from
 it every install + stamps project-owned `.claude/rasa-deployment.md`; ships
 `/whoami`; CLAUDE.md "Who you are" header.~~
 
-**Correction (2026-09-20):** canon SA-025 is
+**Note (2026-09-21):** upstream, canon SA-025 is
 `canon/tasks/triage/SA-025-filemanager-service.md` — the kernel FileManager
 service, still in triage. There is no canon amendment defining an Element
 identity layer. The change also made a mounted module overwrite the
@@ -262,13 +275,13 @@ as being this module. Removed in 1.0.0.
 
 ## 0.1.2 — 2026-07-09 — **REVERTED in 1.0.0**
 
-### ~~Generic `/sync` + `/promote` + source-clone-aware `bin/init` (canon SA-024)~~ — the citation is false
+### Generic `/sync` + `/promote` + `/kit`-aware `bin/init` (cited canon SA-024) — REMOVED in 1.0.0; citation unverified
 
 ~~`bin/init` now clones the Element source into `<project>/kit/<element>/`;
 `/sync` smart-pulls upstream, `/promote` smart-pushes local edits back
 upstream (both directory-mirror → installed into consumers).~~
 
-**Correction (2026-09-20):** canon SA-024 is
+**Note (2026-09-21):** upstream, canon SA-024 is
 `canon/tasks/triage/SA-024-unified-capability-surface.md` — the unified
 Capability surface, still in triage. Nothing in canon defines these verbs.
 The clone landed an undeclared nested repository at the consumer's project
@@ -276,20 +289,22 @@ root under a directory name the canon vocabulary lock forbids, and the two
 skills overwrote same-named skills shipped by likely parent domains.
 Removed in 1.0.0.
 
-## 0.1.1 — 2026-07-09 — **REVERTED in 1.0.0**
+## 0.1.1 — 2026-07-09 — **UPHELD** (a 1.0.0 build wrongly reverted this)
 
-### ~~`parent_kind` → `[domain, tenant]` (canon SA-023)~~ — the citation is false
+### `parent_kind` → `[domain, tenant]` (canon SA-023)
 
-~~The `orchestrator` kind was folded into `tenant`; this module now mounts
-into a tenant or a domain.~~
+- The `orchestrator` kind was folded into `tenant`; this module now mounts
+  into a tenant or a domain (`requires.parent_kind: ["domain", "tenant"]`,
+  was `["domain", "orchestrator"]`).
 
-**Correction (2026-09-20):** canon SA-023 is
-`canon/tasks/triage/SA-023-foreign-framework-plugin-import.md` — foreign-
-framework plugin import, still in triage. No canon amendment folds
-`orchestrator` into `tenant`; `orchestrator` remains one of the eight kinds
-in the LOCKED v1.3.0 contract. The resulting manifest failed the substrate
-JSON Schema from this release until 1.0.0. Reverted to
-`["domain","orchestrator"]` in 1.0.0.
+**This entry stands.** Canon SA-023 *Orchestrator folded into the tenant*
+was absorbed 2026-07-09 and is in `canon/tasks/done/`; ELEMENT_CONTRACT §2
+upstream reads "The seven valid kinds" and §6 bounds `parent_kind` to
+`["domain","tenant"]` (v1.4+). An earlier v1.0.0 build called this citation
+false and reverted the field — the check had been run against a `canon/`
+checkout 35 commits behind, in which SA-023 was a different, unrelated
+proposal (since renumbered upstream to SA-032). The revert is itself
+reverted; see the 1.0.0 entry.
 
 ## 0.1.0 — 2026-06-18 — INITIAL
 

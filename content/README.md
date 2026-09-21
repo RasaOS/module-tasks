@@ -122,7 +122,7 @@ every other Element a project mounts:
 ## Mounting into a parent
 
 `rasa.module.tasks` is a `module` (canon Spec §6): a focused capability
-mountable into a parent `domain` or `orchestrator`. A parent opts in from
+mountable into a parent `tenant` or `domain`. A parent opts in from
 its own `rasa.json`:
 
 ```json
