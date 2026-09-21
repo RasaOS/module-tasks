@@ -490,6 +490,25 @@ def rebuild_roadmap(rm, tasks, generated_phases, notes):
     for t in tasks:
         known[t.id] = t
 
+    def note_dropped_roadmap_prose(notes, tid, line, task, why):
+        """Flag a removed ROADMAP line that carried human prose the kept line lacks.
+
+        Removing a duplicated or triage-stage line is correct. Removing the
+        annotation somebody hand-wrote on it — "— shipped in v0.4.0", a caveat,
+        a cross-reference — is not, and it is invisible: the kept line looks
+        fine, so nobody ever learns the note existed. Anything the migration
+        cannot carry forward mechanically has to end up in front of a person.
+        """
+        residue = line.strip().lstrip("-*").strip()
+        for chunk in (tid, task.title or ""):
+            if chunk:
+                residue = residue.replace(chunk, " ")
+        residue = re.sub(r"^[\s—–:-]+|[\s—–:-]+$", "", residue)
+        residue = re.sub(r"\s+", " ", residue)
+        if len(residue) < 3:
+            return
+        notes.setdefault("roadmap_prose_dropped", []).append((tid, line.strip(), why))
+
     # Pass 1: strip every task line that is misplaced or duplicated.
     kept_for_phase = {}
     seen_ids = set()
@@ -517,9 +536,13 @@ def rebuild_roadmap(rm, tasks, generated_phases, notes):
                 continue
             if t.stage == "triage":
                 notes.setdefault("roadmap_triage_removed", []).append(tid)
+                note_dropped_roadmap_prose(notes, tid, ln, t, "the task is in triage/, which is "
+                                           "unphased by design and never listed in ROADMAP")
                 continue
             if tid in seen_ids:
                 notes.setdefault("roadmap_dupe_removed", []).append(tid)
+                note_dropped_roadmap_prose(notes, tid, ln, t, "the task was listed more than "
+                                           "once; a task belongs to exactly one phase (I-22)")
                 continue
             if b["phase"] == t.phase:
                 seen_ids.add(tid)
@@ -527,6 +550,10 @@ def rebuild_roadmap(rm, tasks, generated_phases, notes):
                 newlines.append(ln)
             else:
                 notes.setdefault("roadmap_moved", []).append((tid, b["phase"], t.phase))
+                note_dropped_roadmap_prose(notes, tid, ln, t,
+                                           "the line sat under phase %r but the task's phase is "
+                                           "%r, so it was relocated and the line regenerated"
+                                           % (b["phase"], t.phase))
         b["lines"] = newlines
 
     # Pass 2: create any missing phase heading blocks.
@@ -1777,6 +1804,23 @@ def write_review_file(mig, dest):
         lines.append("")
         for tid, phase in sorted(set(mig.notes["dangling_roadmap"])):
             lines.append("- `%s` (listed under phase `%s`)" % (tid, phase))
+        lines.append("")
+
+    if mig.notes.get("roadmap_prose_dropped"):
+        lines.append("## Hand-written ROADMAP notes that were removed with their line")
+        lines.append("")
+        lines.append("Removing these lines was correct — a task belongs to exactly one phase, and")
+        lines.append("a triage task is not listed at all. But each carried words somebody typed")
+        lines.append("that the kept line does not, and the migration will not decide whether they")
+        lines.append("still matter. Re-attach anything worth keeping, then delete the entry.")
+        lines.append("")
+        seen = set()
+        for tid, text, why in mig.notes["roadmap_prose_dropped"]:
+            if (tid, text) in seen:
+                continue
+            seen.add((tid, text))
+            lines.append("- `%s` — removed because %s" % (tid, why))
+            lines.append("  - the line read: `%s`" % text)
         lines.append("")
 
     groups = {}
