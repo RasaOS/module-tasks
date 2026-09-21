@@ -432,7 +432,7 @@ def load_phase_map(path, rel, report):
         if m:
             pid = m.group(1)
             name = (m.group(2) or "")
-            name = re.sub(r"^[\s—–:-]+", "", name).strip()
+            name = re.sub(r"^[\s—–·:-]+", "", name).strip()
             if not name:
                 pm.malformed.append((idx, line.strip()))
                 current = None
@@ -1504,7 +1504,7 @@ def apply_map_fixes(pm, removals, insertions):
             m = re.match(RX_PHASE_HEADING, line)
             if m:
                 pid = m.group(1)
-                name = re.sub(r"^[\s—–:-]+", "", m.group(2) or "").strip()
+                name = re.sub(r"^[\s—–·:-]+", "", m.group(2) or "").strip()
                 if name and pid not in fresh.phases:
                     fresh.phases[pid] = {"line": idx, "name": name}
                     fresh.order.append(pid)

@@ -236,7 +236,7 @@ Nothing but this. No preamble, no closing commentary.
 
 ---
 
-## Phase 2 · Intake
+## Phase 2 — Intake
 
 🚧 in flight — 🚧 1 · 👁 1 · 📋 1 · ✅ 4  (7 tasks)
 
@@ -247,7 +247,7 @@ Nothing but this. No preamble, no closing commentary.
 | TASK-044 | Standing instruction for the file room | ✅ Completed | 🧹 Upkeep | 2026-08-28 | jmr | 2026-09-10 | jmr | — |
 | TASK-047 | Duplicate of the retention amendment | 🗄 Closed | 🔄 Change | 2026-09-03 | para1 | 2026-09-05 | jmr | duplicate → TASK-042 |
 
-## Phase 3 · Filing
+## Phase 3 — Filing
 
 📋 partly done — 📋 2 · ✅ 24  (26 tasks)
 
