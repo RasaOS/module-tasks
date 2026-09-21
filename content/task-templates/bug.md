@@ -1,6 +1,7 @@
 ---
 id: TASK-XXX
 category: bug
+phase: <phase-id>       # a CACHE — tasks/ROADMAP.md is authoritative
 status: backlog | active | blocked | completed
 severity: low | medium | high
 owner: unassigned       # accountable human/team/agent — not the per-run actor
@@ -10,8 +11,6 @@ filed: <YYYY-MM-DD HH:MM UTC>
 origin: manual          # manual | auto-fallback | auto-guard
 ---
 
-<!-- Phase is NOT declared here. tasks/ROADMAP.md is the sole phase
-     registry (see .claude/task-rules.md → "Phase structure"). -->
 
 # TASK-XXX: <short title — describe the bug, not the fix>
 

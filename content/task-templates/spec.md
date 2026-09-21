@@ -1,6 +1,7 @@
 ---
 id: TASK-XXX
 category: spec
+phase: <phase-id>       # a CACHE — tasks/ROADMAP.md is authoritative
 status: backlog
 owner: unassigned       # accountable human/team/agent — not the per-run actor
 blocked_by:             # comma-separated task ids, e.g. TASK-012, TASK-014
@@ -19,8 +20,8 @@ origin: manual          # manual | auto-fallback | auto-guard
 > `.claude/done-gate.md`. If this domain ships an extension
 > (`.claude/<domain>-task-rules.md`), read it too.
 >
-> **Phase lives in `ROADMAP.md`, not here.** Do not declare a phase in
-> this file — `tasks/ROADMAP.md` is the sole phase registry.
+> **`tasks/ROADMAP.md` is authoritative for phase.** The `phase:` field
+> above is a cache for convenience; fix ROADMAP when they disagree.
 >
 > For other categories: `stub.md` (light tracking), `bug.md` (fix broken
 > behavior), `hotfix.md` (urgent fix that ships now).

@@ -47,9 +47,10 @@ ever disagree, `task-rules.md` wins.
   area (`tasks/triage/`). If the user doesn't name a phase, ASK; if
   there's still no home, file to triage rather than forcing one. Never
   invent a phase (that's a `/roadmap` concern — hand off).
-- **`ROADMAP.md` is the sole phase registry.** A task never declares its
-  phase inside its own spec file. Phase membership is recorded in
-  ROADMAP and nowhere else, so the two can't drift. The invariant: *in
+- **`ROADMAP.md` is authoritative for phase.** A task file also carries a
+  `phase:` cache — this skill writes it when filing and again at
+  graduation — but ROADMAP wins on any disagreement, and a conflict is
+  fixed in ROADMAP rather than in the spec file. The invariant: *in
   `ROADMAP.md` ⟺ has a phase ⟺ triaged.* Triage tasks are deliberately
   not in ROADMAP.
 - **Edits are conservative by default.** Drafts go to `tasks/backlog/`
@@ -558,8 +559,8 @@ distinction, not a technical one — confirm urgency before filing.
    `TASK-NNN`).
 4. **Draft the file** using `.claude/task-templates/hotfix.md` at
    `tasks/active/HOTFIX-NNN-slug.md` — direct to `active/`, no backlog
-   stop. Set `status: active`. Hotfixes carry no `phase:` field (they're
-   unphased; ROADMAP.md is the sole phase registry).
+   stop. Set `status: active` and `phase: null` — hotfixes are unphased,
+   so the field is present and its value is null.
 5. **Do NOT touch `ROADMAP.md`.** Hotfixes are not in the roadmap;
    they're emergency work.
 6. **Note the follow-through.** A 🔥 entry goes in `tasks/AUDIT.md` when

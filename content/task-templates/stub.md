@@ -1,6 +1,7 @@
 ---
 id: TASK-XXX
 category: stub
+phase: <phase-id>       # a CACHE — tasks/ROADMAP.md is authoritative
 status: triage | backlog | active | blocked | completed
 owner: unassigned       # accountable human/team/agent — not the per-run actor
 blocked_by:             # comma-separated task ids, e.g. TASK-012, TASK-014
@@ -9,10 +10,6 @@ filed: <YYYY-MM-DD HH:MM UTC>
 origin: manual          # manual | auto-fallback | auto-guard
 ---
 
-<!-- Phase is NOT declared here. tasks/ROADMAP.md is the sole phase
-     registry (see .claude/task-rules.md → "Phase structure"). A triage
-     stub is unphased by definition; a backlog stub's phase lives in
-     ROADMAP.md. -->
 
 # TASK-XXX: <short title>
 

@@ -322,6 +322,7 @@ work is this, and how do we treat it?*
 ---
 id: TASK-042            # or HOTFIX-042 for the Hotfix category
 category: spec          # stub | spec | bug | hotfix
+phase: phase-3          # null for hotfix; a CACHE — ROADMAP.md is authoritative
 status: backlog         # triage | backlog | active | blocked | completed
 owner: unassigned       # accountable human/team/agent — NOT the per-run actor
 blocked_by:             # comma-separated task ids this waits on
@@ -367,10 +368,20 @@ nothing, so `outcome` stays `unrecorded` forever and every reader believes the
 field is simply unset. If you build one, make inserting the missing key the
 first thing you test.
 
-There is **no `phase:` field** in a task's frontmatter — phase
-membership lives in `ROADMAP.md` and nowhere else (see "Phase
-structure"). Recording a phase in the spec file too would create a
-second source of truth that drifts.
+**`tasks/ROADMAP.md` is authoritative for phase membership**, and wins on
+any disagreement. A task file also carries a `phase:` field: a denormalized
+convenience copy, not a second source of truth. Treat it as a cache — read
+it freely, and fix ROADMAP when the two disagree.
+
+Earlier revisions of this rule said there is *no* `phase:` field, on the
+reasoning that a second copy drifts. The reasoning is sound and the rule was
+still wrong, because it was never true of this module's own behavior: `/task`
+writes `phase:` when it files a task and again when it graduates one
+(`skills/task/SKILL.md`), and the v0.42.0 template this module was distilled
+from carried `phase: <phase-id>`. A rule that the module's own skill breaks
+on every invocation is not a constraint, it is a discrepancy — so the rule is
+corrected to match the writers rather than a field three of them emit being
+deleted.
 
 - **`stub`** — track lightly, no full spec. Title, brief description,
   optional notes. Signals: don't expand this; it exists to be visible
@@ -411,6 +422,7 @@ fields never requires re-filing an existing task, and a task file with no
 | `id` | parse it from the filename — the filename is authoritative either way |
 | `category` | `spec` |
 | `status` | the directory the file is in |
+| `phase` | resolve it from `tasks/ROADMAP.md`, which is authoritative anyway |
 | `owner` | `unassigned` — never guessed |
 | `blocked_by` | no declared dependency |
 | `outcome` | `unrecorded` — **never** inferred from `status: completed` or from living in `completed/` |

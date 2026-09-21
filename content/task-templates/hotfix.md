@@ -1,6 +1,7 @@
 ---
 id: HOTFIX-XXX
 category: hotfix
+phase: null            # hotfixes skip ROADMAP
 status: active | blocked | completed
 severity: high | critical
 filed: <YYYY-MM-DD HH:MM UTC>
@@ -10,8 +11,6 @@ outcome: unrecorded     # unrecorded | shipped | reverted | superseded
 origin: manual          # manual | auto-fallback | auto-guard
 ---
 
-<!-- No phase field. Hotfixes are unphased by definition — they skip
-     ROADMAP.md entirely (see .claude/task-rules.md → "Categories"). -->
 
 # HOTFIX-XXX: <short title — describe what's broken in the live state>
 

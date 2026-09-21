@@ -133,13 +133,30 @@ Two of these carry reasoning worth keeping:
   `completed/`. A task can reach `completed/` having been reverted or
   superseded, and a system that guesses cannot tell those apart.
 
-#### Two things deliberately NOT ported
+#### `phase:` — corrected, not adopted from outside
 
-- **`phase:` stays out of frontmatter.** domain-code ships it and corrected its
-  own rule to call it a denormalized cache. This module's position — phase lives
-  in `ROADMAP.md` and nowhere else — is the portable one, and a domain that wants
-  the cache can carry it as a domain extension. The module does not adopt a
-  second source of truth.
+An earlier draft of this entry said `phase:` was deliberately kept out because
+"phase lives in `ROADMAP.md` and nowhere else" was this module's considered
+position. That was wrong, and the correction is the more useful finding: the
+module was **contradicting itself**.
+
+`task-rules.md` and all four templates said there is no `phase:` field. The
+module's own `/task` skill writes one — when filing (`skills/task/SKILL.md`)
+and again at graduation — and the v0.42.0 template this module was distilled
+from carried `phase: <phase-id>`. The field was dropped from the rules and the
+templates during distillation while the writer kept emitting it.
+
+A rule the module's own skill breaks on every invocation is not a constraint,
+it is a discrepancy. Corrected in the direction the writers already take:
+**ROADMAP is authoritative, `phase:` is a cache**, fix ROADMAP when they
+disagree. Five stale "sole phase registry" claims removed across
+`task-rules.md`, `skills/task`, `skills/roadmap` and `task-templates/spec.md`.
+
+This is the same correction `rasa.domain.code` made in its v0.50.0 for the same
+reason, so the two Elements now agree rather than contradicting each other.
+
+#### One thing deliberately NOT ported
+
 - **`task-guard` is not moved here.** "Domain extensions" already names it as
   belonging to the software domain, and that is right: it is a pre-commit hook
   bound to branch/PR conventions, not to task discipline.

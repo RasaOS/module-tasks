@@ -21,9 +21,9 @@ and the task files; it never edits anything.
    mapping. The ROADMAP has `## Phase N — <name>` sections
    followed by bulleted lists of `TASK-NNN — <title>`. Extract
    each phase's task IDs (preserving letter suffixes like
-   `018a`). ROADMAP.md is the sole phase registry — task files do
-   not declare their own phase, so the mapping comes from here and
-   nowhere else.
+   `018a`). ROADMAP.md is AUTHORITATIVE for phase — task files carry
+   a `phase:` cache, but this mapping is built from ROADMAP, and
+   ROADMAP wins on any disagreement.
 
 2. **Read every task file** in `tasks/active/`,
    `tasks/blocked/`, `tasks/backlog/`, `tasks/completed/`. For
