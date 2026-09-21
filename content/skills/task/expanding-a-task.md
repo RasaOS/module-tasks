@@ -104,7 +104,9 @@ Do not re-run a failure someone already paid for.
   decided not to do this, and said why.
 - **`tasks/active/`, `tasks/review/`, `tasks/blocked/`** — work in
   flight on the same artifacts. Say so and coordinate; a blocker
-  sitting on one of them may be about to become yours.
+  sitting on one of them may be about to become yours. If one of them
+  must finish before this task can even begin, that is a `needs:`
+  entry, not a note — carry it to step 11.
 - **Any decision or incident notes this project keeps** — read them if
   they exist; do not assume a location.
 
@@ -152,7 +154,7 @@ Before writing anything, put the approach on the table:
 - [ ] Scale or volume implications?
 - [ ] Hard to reverse?
 - [ ] Needs a second party's sign-off beyond the usual gate?
-- [ ] Blocks, or is blocked by, another task?
+- [ ] Blocks, or is blocked by, another task?  <if yes, name the ids>
 - [ ] Needs to land in stages?
 
 **Risks** <if any>
@@ -162,6 +164,13 @@ Does this hold up?
 
 Wait for an answer. If the user wants a different approach, go back to
 step 4 and come forward again. Do not proceed on silence.
+
+A yes to *"blocked by another task"* is the one check here that has a
+field waiting for it. Get the ids now; step 11 writes them into
+`needs:`. A yes to *"blocks another task"* does **not** get recorded on
+this task — there is no `blocks:` key, because it is the inverse of
+`needs:` and derived. It belongs on the other task, as its own
+`needs:`, and only with that task's owner in agreement.
 
 ## Step 8 — Show the context report
 
@@ -183,6 +192,7 @@ correct your read of the territory while correcting it is still cheap.
 - **Prior work:** TASK-M, <when>. Outcome: <what happened>. Lesson: <what>.
 - **Pitfall:** <the specific thing that went wrong before>
 - **In flight:** TASK-K touches <artifact>. Sequencing: <what to do>.
+- **Must finish first:** TASK-J — <why this cannot begin until it does>
 - **Standing decision:** <what was decided, when, and why>
 
 ### What exists here now
@@ -261,11 +271,27 @@ not manufacture questions to look thorough.
    shape of `.claude/task-templates/<type>.md`. Do not create a second
    file; the id, the created date and the attribution are already on
    disk and must not be reissued.
-3. **Run `.claude/bin/check-tasks --fix`** so `updated` moves to today.
-   A body this size that leaves the date behind is a hard validator
-   error, and it is the one thing about this operation that is easy to
-   forget.
-4. Tell the user: the path, and that the task is now full-depth.
+3. **Write `needs:` if steps 5 and 7 found one.** Same edit, same
+   moment — one line in the frontmatter, a flow list of the ids that
+   must finish first:
+
+   ```yaml
+   needs: [TASK-LIT-038]
+   ```
+
+   This is the one frontmatter key you may write by hand; `SKILL.md`
+   **Declare a dependency** has the full rule and the errors it can
+   raise. Do it here, in the same edit as the body, so one `--fix`
+   covers both. Only ids the user agreed to — an expansion is not a
+   licence to impose an order on someone else's queue.
+4. **Run `.claude/bin/check-tasks --fix`** so `updated` moves to today
+   and the new content is accepted as current. A file this size that
+   leaves the date behind is a hard validator error, and it is the one
+   thing about this operation that is easy to forget. If it reports
+   I-26 or I-27 against your `needs:`, `--fix` cannot repair either —
+   an id is wrong, and only you and the user know which.
+5. Tell the user: the path, that the task is now full-depth, and any
+   `needs:` you recorded.
 
 The finished file carries, at minimum:
 
@@ -281,8 +307,14 @@ The finished file carries, at minimum:
 - **what was read** — the precedent from step 4 and the authority from
   step 6, with citations
 - **open questions and risks** — whatever step 10 did not close
+- **`needs:`**, when another task must finish first — in the
+  frontmatter, not only in the prose. A dependency stated in a
+  paragraph is invisible to the validator and to every view; stated in
+  `needs:` it is checked for existence and for loops, and it shows up
+  against this task in `/backlog` and `/roadmap`.
 
 And only when they apply: why this approach over the alternative; what
-it depends on or blocks; scale limits; checkpoints along the way; a
-staged order of landing; audience constraints; what breaks for existing
-users and what to do about it.
+this one blocks, in prose (there is no `blocks:` key — it is derived);
+scale limits; checkpoints along the way; a staged order of landing;
+audience constraints; what breaks for existing users and what to do
+about it.

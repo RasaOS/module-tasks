@@ -46,7 +46,18 @@ tasks/intake.md → triage/ → backlog/ → active/ → review/ → completed/
 | `review/` | work finished; **the done-gate has not passed yet** | required |
 | `blocked/` | cannot proceed; enterable from backlog, active or review | required |
 | `completed/` | terminal — the done-gate passed | required |
-| `closed/` | terminal — ended **without** being done | required |
+| `closed/` | terminal — ended **without** being done | iff it ever had one |
+
+`closed/` is the only stage with a conditional in that column, and the
+conditional is forced. `closed/` is reachable from every stage including
+`triage/`, and a task in `triage/` has no phase *by rule* (I-19). Requiring
+one on the way out would mean inventing a phase for work that was never
+planned — filing "we are not taking this matter" under a phase of work, and
+then listing it on the roadmap (I-22) as though somebody intended to do it.
+So the phase is carried out of the stage the task was actually in, and a task
+closed straight out of `triage/` carries none. The same holds for `target:`
+(§5). Nothing else changes: the field is still forbidden in `triage/` and
+still required everywhere a task is planned, worked, reviewed or finished.
 
 **I-01** — a file is a task if and only if it is a `.md` file directly inside
 one of those seven directories. Anything else under `tasks/` — your own
@@ -103,13 +114,22 @@ real checkbox).
 | `active/` | `submit` | `review/` |
 | `review/` | `reject` | `active/` |
 | `review/` | `pass --by WHO` | `completed/` |
-| any | `close --resolution R --by WHO [--ref ID]` | `closed/` |
-| `completed/` `closed/` | `reopen` | `active/`, `backlog/` or `triage/` |
+| any | `close --resolution R --by WHO [--ref ID]` | `closed/` (keeps the phase it had; **from `triage/` it has none and none is assigned**) |
+| `completed/` `closed/` | `reopen` | `active/`, `backlog/` or `triage/` (**to `triage/` it drops the phase**, as `demote` does) |
 
 One verb does three things **in one act**: writes the conditional
 frontmatter, appends a line to `tasks/history.tsv`, moves the file. That is
 the whole fix for the 301 stale statuses — the separate, easy-to-forget
 second edit no longer exists as a step a person can skip.
+
+"Writes the conditional frontmatter" includes **deleting** what the
+destination forbids, which is the half that gets forgotten. `demote` and
+`reopen --to triage` remove `phase`, because `triage/` forbids it. `reopen`
+out of either terminal removes `completed_by`, `resolution` and
+`resolution_ref`, because a reopened task is not finished and must not
+still say it was. Any verb that leaves one of those behind produces a file
+`bin/check-tasks` rejects under I-19 or I-30 — which is the point: the
+invariants are what keep the verbs honest.
 
 Moving a file by hand still leaves a valid tree, and is caught by **I-33**:
 the directory must equal the `to` of the task's last history line. `--fix`
@@ -118,24 +138,32 @@ will not fabricate the date you actually did it on.
 
 ## 3. The frontmatter contract
 
+A whole file, valid exactly as printed. The table under it says what each
+field means, so nothing here has to be explained on the line it appears on —
+and nothing here *may* be, because a `#` after a value is part of that value:
+
 ```yaml
 ---
-id: TASK-LIT-042           # immutable, allocated once by `bin/task new`
-type: change               # the one value a person types at filing
-created: 2026-09-14        # written by the allocator, never rewritten
-created_by: para1          # written by the allocator, never rewritten
-updated: 2026-09-20        # written by every `bin/task` operation
-phase: DISC                # required outside triage/, forbidden inside it
-target: [smith-v-acme]     # required iff this project declares targets
-priority: now              # optional: now | high | normal | low
-needs: [TASK-LIT-038]      # optional: the only dependency field
-x-matter_number: 2:26-cv-01187   # any x- key is yours, preserved, uninterpreted
+# A comment is a whole line. This one is fine; the same words written after
+# a value below would become part of the value. Every key here is a key.
+# The task is in active/: it carries a phase (so not triage/) and
+# `priority: now` (so not backlog/ either — see I-14).
+id: TASK-LIT-042
+type: change
+created: 2026-09-14
+created_by: para1
+updated: 2026-09-20
+phase: DISC
+target: [smith-v-acme]
+priority: now
+needs: [TASK-LIT-038]
+x-matter_number: 2:26-cv-01187
 ---
 
 # TASK-LIT-042: Amend the protective order for third-party production
 
 ## Acceptance criteria
-- [ ] …
+- [ ] The amended order is filed and the third party has been served.
 ```
 
 | field | required | values | written by | checks |
@@ -145,8 +173,8 @@ x-matter_number: 2:26-cv-01187   # any x- key is yours, preserved, uninterpreted
 | `created` | always | `YYYY-MM-DD`, not future | the allocator, once | I-15 I-35 |
 | `created_by` | always | an actor handle, or `unknown` | the allocator, once | I-17 I-18 |
 | `updated` | always | `created ≤ updated ≤ today` | every `bin/task` write | I-16 I-34 I-35 |
-| `phase` | outside `triage/` | a phase id declared in `tasks/ROADMAP.md` | a person, at graduation | I-19 I-20 I-22 |
-| `target` | iff targets declared | members of `tasks.config.yml#targets` | a person | I-25 |
+| `phase` | `backlog/`…`completed/`; never `triage/`; optional in `closed/` | a phase id declared in `tasks/ROADMAP.md` | a person, at graduation | I-19 I-20 I-22 |
+| `target` | iff targets declared, and then everywhere a phase is required | members of `tasks.config.yml#targets` | a person | I-25 |
 | `completed_by` | in `completed/`+`closed/` | an actor handle, or `unknown` | `bin/task pass` / `close` | I-29 I-30 |
 | `resolution` | in `closed/` only | `superseded` `duplicate` `obsolete` `wont-do` | `bin/task close` | I-29 I-30 |
 | `resolution_ref` | iff superseded/duplicate | an existing id, not this one | `bin/task close` | I-29 |
@@ -161,6 +189,14 @@ else is stamped, or typed once later at graduation.
   line, plain scalars or flow lists, no indentation, no block scalars, no
   anchors, no `null`, no duplicate keys. It parses without a third-party
   library, because a gate that needs one is a gate that does not run.
+- **A value is the rest of the line, and `#` is a literal character in it.**
+  A comment is a line that *begins* with `#` (leading whitespace is itself
+  illegal, so it begins in column one). There is no trailing-comment syntax:
+  `type: change    # the usual one` sets `type` to
+  `change    # the usual one`, which then fails I-12 — and the same trap is
+  waiting on `id`, on both dates, on `created_by`, on `phase` and on
+  `priority`. Put the explanation on its own line above the field. The rule
+  is the same in `tasks.config.yml`, which the same parser reads.
 - **I-11** — an unrecognized bare key is an error; prefix it `x-` and it is
   legal, preserved, never interpreted. That is the only extension seam, and
   it is deliberately visible.
@@ -178,10 +214,17 @@ ignored it — 522 of 558 real files carry a `phase:` key the old rules forbade
 old design made them open a second document to get it. v1.0.0 keeps both
 copies and proves they agree instead of forbidding one:
 
-- **I-19** — `phase` present on every task outside `triage/`, absent inside it.
+- **I-19** — `phase` is absent in `triage/`, present in `backlog/`,
+  `active/`, `review/`, `blocked/` and `completed/`, and optional in
+  `closed/` — present there iff the task had one before it was closed. Those
+  are the three cases, and `closed/` is the only one that is not a flat
+  yes-or-no, for the reason given in §1.
 - **I-20** — the value equals, case-sensitively, a phase id declared by a
   `## Phase <id> — <name>` heading in `tasks/ROADMAP.md`.
 - **I-22** — ROADMAP lists that task exactly once, under exactly that phase.
+  The roadmap follows the **phase**, not the stage: a task with a phase is
+  listed under it wherever it sits, and a task with no phase — anything in
+  `triage/`, and anything closed straight out of it — is not listed at all.
   `--fix` inserts a missing line and removes a misplaced one, preserving the
   existing order: the order is the one you intend to work in, and is never
   resorted for you.
@@ -207,10 +250,14 @@ targets: [manuscript, screenplay]          # a novelist, by work
 targets: []                                # a project with one surface
 ```
 
-**I-25** — if that list is non-empty, every task outside `triage/` carries a
-non-empty `target` drawn from it. If the list is empty or absent, `target`
-must be absent: a value against an undeclared axis is an error, not a shrug.
-Always a list, even with one member.
+**I-25** — if that list is non-empty, every task that is required to carry a
+`phase` carries a non-empty `target` drawn from it. That is `backlog/`
+through `completed/`; in `triage/` a target is allowed but not demanded, and
+in `closed/` it is carried iff the task had one. The axis is answered when
+the work is taken on, and a matter you are declining is exactly the one that
+is not on your declared list. If the list is empty or absent, `target` must
+be absent everywhere: a value against an undeclared axis is an error, not a
+shrug. Always a list, even with one member.
 
 ## 6. `type:` — what kind of work this is
 
@@ -395,9 +442,13 @@ part of the same graduation, and if you leave it out I-22 says so and
 `--fix` inserts it.
 Work that will not be done goes `bin/task close --resolution wont-do --by WHO`
 — `closed/` with the reason recorded, where v0.1.x sent it to a
-`.claude/wont-do.md` that nothing ever created. Sweep whenever triage grows
-past what you can read in one sitting: graduate, or close. Letting it grow is
-the failure mode; **judgement** on which is which.
+`.claude/wont-do.md` that nothing ever created. **No `--phase` is asked for
+and none is written**: the task never had one, `closed/` does not require
+one, and the roadmap is left alone. That is the whole point of the
+`closed/` exception in §1 — the ordinary triage answer has to be one
+command with nothing invented, or the sweep does not happen. Sweep whenever
+triage grows past what you can read in one sitting: graduate, or close.
+Letting it grow is the failure mode; **judgement** on which is which.
 
 ## 15. The record
 

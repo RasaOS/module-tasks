@@ -57,7 +57,7 @@ actors: []
 # module: you declare the values, and the validator then holds tasks to them.
 #
 # Empty or absent  -> `target:` is FORBIDDEN in task frontmatter.
-# Non-empty        -> `target:` is REQUIRED on every task outside triage/,
+# Non-empty        -> `target:` is REQUIRED on every task outside triage/ and closed/,
 #                     always as a list, and every member must be declared
 #                     here. A value you did not declare is an error, not a
 #                     shrug.

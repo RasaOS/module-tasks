@@ -7,7 +7,9 @@ exactly one of them.
 Two facts are kept in step mechanically, so neither can drift:
 
 - a task's `phase:` must equal a phase id declared here, and
-- every task outside `triage/` must appear under that phase in this file.
+- every task carrying a phase must appear under that phase in this file.
+  (`triage/` tasks have no phase yet; a task closed straight out of triage
+  keeps none, so neither appears here.)
 
 Tasks in `tasks/triage/` are deliberately phase-less and do **not** appear
 here. Putting one here, or giving one a `phase:`, is an error -- graduate it

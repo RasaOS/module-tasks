@@ -1070,7 +1070,7 @@ def check_targets(ledger, values):
     if not values:
         raise Abort(
             "this project declares targets (%s), so `target:` is required "
-            "outside triage/. Pass --target." % ", ".join(declared)
+            "outside triage/ and closed/. Pass --target." % ", ".join(declared)
         )
     for item in values:
         if not re.match(TARGET_PATTERN, item):
@@ -1276,7 +1276,7 @@ def verb_new(ledger, args):
     if priority == "now" and not phase:
         raise Abort(
             "`priority: now` files straight into active/, and every task "
-            "outside triage/ needs a phase. Pass --phase too."
+            "outside triage/ and closed/ needs a phase. Pass --phase too."
         )
 
     if priority == "now":
@@ -1413,11 +1413,11 @@ def expected_stage_check(verb, task):
 
 
 def ensure_phase_for(ledger, task, supplied):
-    """A task outside triage/ must carry a phase declared in the registry."""
+    """A task outside triage/ and closed/ must carry a phase in the registry."""
     phase = supplied or task.get("phase")
     if not phase:
         raise Abort(
-            "%s carries no phase, and every task outside triage/ needs one. "
+            "%s carries no phase, and every task outside triage/ and closed/ needs one. "
             "Pass --phase." % task.get("id")
         )
     check_phase_value(ledger, str(phase))
@@ -1771,8 +1771,18 @@ def verb_close(ledger, args):
         if ref == task.get("id"):
             raise Abort("a task cannot supersede or duplicate itself")
 
-    phase = ensure_phase_for(ledger, task, args.phase)
-    targets = ensure_target_for(ledger, task, split_list_option(args.target))
+    # Closing straight out of triage/ must not demand a phase. `closed/` is the
+    # only terminal reachable from triage/, and the triage sweep — "graduate, or
+    # close" — is the one procedure that has to stay cheap or it never happens.
+    # Forcing a phase would also put the decline on the roadmap as though
+    # somebody intended the work. An explicit --phase is still honoured.
+    from_triage = task.stage == "triage"
+    if from_triage and not args.phase:
+        phase = None
+        targets = split_list_option(args.target) or None
+    else:
+        phase = ensure_phase_for(ledger, task, args.phase)
+        targets = ensure_target_for(ledger, task, split_list_option(args.target))
 
     actor = resolve_actor(ledger, args.by)
     check_actor(ledger, actor, "completed_by")
@@ -1782,7 +1792,8 @@ def verb_close(ledger, args):
     reason = (args.note or "").strip()
 
     def mutate(doc):
-        doc.set("phase", phase)
+        if phase is not None:
+            doc.set("phase", phase)
         if targets is not None:
             doc.set("target", targets)
         doc.set("completed_by", actor)

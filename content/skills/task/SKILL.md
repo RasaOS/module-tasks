@@ -1,6 +1,6 @@
 ---
 name: task
-description: Drive the task lifecycle — file a task, triage it, give it a phase, start it, park it, block or unblock it, submit it for the done-gate, pass or reject it, close it without doing it, reopen it, expand an outline into a full task, declare a new phase, capture or promote an intake note, and check or repair the ledger. Writes; every state change runs through .claude/bin/task so the file, the log and the move happen as one act. Use for "/task", "file a task for X", "I am starting TASK-N", "I am blocked on TASK-N", "TASK-N is finished", "close TASK-N as superseded", "which phase does this go in", "flesh out TASK-N". Not for rendering the ledger — use /backlog or /roadmap for that.
+description: Drive the task lifecycle — file a task, triage it, give it a phase, start it, park it, block or unblock it, submit it for the done-gate, pass or reject it, close it without doing it, reopen it, declare a dependency between two tasks, expand an outline into a full task, declare a new phase, capture or promote an intake note, and check or repair the ledger. Writes; every state change runs through .claude/bin/task so the file, the log and the move happen as one act. Use for "/task", "file a task for X", "I am starting TASK-N", "I am blocked on TASK-N", "TASK-N is finished", "close TASK-N as superseded", "TASK-N depends on TASK-M", "which phase does this go in", "flesh out TASK-N". Not for rendering the ledger — use /backlog or /roadmap for that.
 ---
 
 # /task — the lifecycle driver
@@ -63,6 +63,13 @@ Show the user the exact command and the exact error. Do not work around
 it by editing files — a hand-edit is precisely the drift this module
 exists to make impossible.
 
+**One field has no flag on any verb: `needs:`.** Every other
+person-written value — `--type`, `--phase`, `--target`, `--priority` —
+is reachable above. A dependency is not, so it is the one thing this
+skill writes into frontmatter by hand, followed by `check-tasks --fix`.
+See **Declare a dependency** below; do not improvise it, and do not
+pass `--needs`, which the command rejects.
+
 ## Routing
 
 | the user says | do this |
@@ -79,6 +86,9 @@ exists to make impossible.
 | "putting TASK-N down", "not working on it now" | `park` |
 | "blocked on TASK-N", "TASK-N is stuck on …" | **Block** |
 | "TASK-N is unblocked / that cleared" | `unblock` |
+| "TASK-N cannot start until TASK-M is done", "TASK-N depends on TASK-M", "do TASK-M first" | **Declare a dependency** |
+| "TASK-N no longer waits on TASK-M", "that dependency is not real" | **Declare a dependency** (the removal half) |
+| "what is waiting on what?", "what does TASK-N depend on?" | read it: `.claude/bin/task show TASK-N` prints `needs:`; `/backlog` marks every waiting task |
 | "TASK-N is finished / ready for the gate" | **Finish** (`submit`) |
 | "the gate failed", "send TASK-N back" | `reject` |
 | "TASK-N passed / it is done" | **Finish** (`pass`) |
@@ -117,16 +127,21 @@ by design: the attribution debt is allowed to shrink and not to grow.
 4. **Never invent a frontmatter key.** Unknown bare keys are a hard
    error. A project-specific fact goes under an `x-` prefix, which is
    preserved and never interpreted.
-5. **Never edit a task body without bumping its date.** The digest
+5. **Never edit a task file without bumping its date.** The digest
    ledger catches an edited file whose `updated` did not move, and
-   reports it as an error. After any body edit, run
-   `.claude/bin/check-tasks --fix`, which sets `updated` to today. Tell
-   the user you did.
+   reports it as an error. After any edit you made yourself — body or
+   `needs:` — run `.claude/bin/check-tasks --fix`, which sets `updated`
+   to today and accepts the new content. Tell the user you did.
 
 You **may** freely write the body: the H1, `## Acceptance criteria`,
 `## Blocker`, `## Notes`. That is what the templates at
 `.claude/task-templates/` are for, and it is where all the real
 authoring happens.
+
+You **may** also write one frontmatter key by hand — `needs:`, and
+only `needs:`, because it is the one person-written field with no flag
+on any verb. **Declare a dependency** below is the whole procedure.
+Nothing else in the frontmatter is yours: rules 1–4 stand unchanged.
 
 ---
 
@@ -166,7 +181,13 @@ authoring happens.
    it is, one line of why. Do not write a full task unless the user
    asked for one; **Expand** is the operation for that, later, when it
    is about to be worked.
-8. **Show what landed** — the path, the id, the phase — and stop.
+8. **Dependencies, only if the user stated one.** If they said this
+   cannot start until another task finishes, and named it, add
+   `needs:` now — see **Declare a dependency**. If they did not say so,
+   do not infer one: a dependency nobody asked for is a queue nobody
+   agreed to, and the expansion step exists to surface real ones later.
+9. **Show what landed** — the path, the id, the phase, and any
+   `needs:` — and stop.
 
 ## Triage pass
 
@@ -194,6 +215,96 @@ the new directory.
   `.claude/bin/task block TASK-N`.
 - `unblock` — the command returns the task to whichever state it came
   from, read from the log. Do not name a destination.
+
+## Declare a dependency (`needs:`)
+
+`needs:` is the only dependency field (`.claude/task-rules.md` §8): the
+ids that must finish before this one can. Like `type`, `phase`,
+`target` and `priority` it is **written by a person** — but unlike all
+four of those it has **no flag on any verb**, and the command says so:
+
+```
+$ .claude/bin/task new --type change --needs TASK-LIT-038 "File the exhibit"
+task: error: unrecognized arguments: --needs
+```
+
+So the sanctioned path is two steps, and the second is not optional.
+
+1. **Write the key into the frontmatter by hand.** One line, a flow
+   list, no indentation — the grammar in `.claude/task-rules.md` §3
+   accepts nothing else. Put it where the contract's own example puts
+   it, after `priority:` if there is one:
+
+   ```yaml
+   needs: [TASK-LIT-038]
+   ```
+
+   More than one: `needs: [TASK-LIT-038, TASK-LIT-041]`.
+
+2. **Run `.claude/bin/check-tasks --fix`.** Until you do, the digest
+   ledger reports the edit as a hard error:
+
+   ```
+   I-34  the file changed but 'updated' still reads 2026-09-14 [--fix]
+        → --fix sets 'updated' to today and accepts the new content
+   ```
+
+   `--fix` prints exactly what it did, under `APPLIED`:
+   `accepted the new content as current in the digest ledger`, plus
+   `set 'updated: <today>'` when the date had actually fallen behind —
+   edit and fix on the same day and you will see only the first. Show
+   the user whichever lines appear. Never leave the error standing for
+   someone else to find.
+
+**This is not repairing around the tooling.** There is no verb here to
+route around. `needs:` is person-written, the same way
+`## Acceptance criteria` is person-written, and step 2 is what keeps
+the date honest in place of the stamp a verb would have made. What
+stays forbidden is unchanged: the directory, the log, and the seven
+command-owned keys.
+
+### What the validator will hold you to
+
+All of it fires on the next `check-tasks`, so get it right while you
+are looking at the file:
+
+| what you wrote | what happens |
+|---|---|
+| an id that is not in this ledger | **I-26** error — `'needs: TASK-LIT-999' names a task that is not in this ledger` |
+| this task's own id | **I-26** error — `a task cannot need itself` |
+| the same id twice | **I-26** error — `'TASK-LIT-038' is listed twice in 'needs'` |
+| anything but a one-line flow list of ids | **I-26** error — `'needs' must be a flow list of task ids` |
+| a loop of any length | **I-27** error, and it prints the cycle: `TASK-LIT-001 -> TASK-LIT-002 -> TASK-LIT-001` |
+| this task reaches `completed/` with a need that has not | **I-28** warning — `this task is completed but needs TASK-LIT-001, which is still in backlog/` |
+
+I-26 and I-27 are errors `--fix` cannot touch — only a person knows
+which of the ids was the wrong one. Walk them with the user one at a
+time.
+
+### Two things that are easy to get wrong
+
+- **`needs:` moves nothing.** It is a declaration, not a transition. A
+  task waiting on another is *not* thereby in `blocked/`, and adding
+  the key will not put it there. The two are complementary and both are
+  fine to use at once: `needs:` names **which task**, the `## Blocker`
+  section and `.claude/bin/task block` say **what is in the way and
+  why**. Use `blocked/` when the user wants the task out of the working
+  view; use `needs:` when they want the order recorded.
+- **To drop a dependency, delete the line** — by hand, then
+  `check-tasks --fix`, exactly as above. Do not leave `needs: []`
+  behind: the validator accepts an empty list without complaint, which
+  is precisely why it is the wrong way to say "none" — it reads as a
+  declaration and checks as nothing. Remove the key.
+
+### The gap, stated plainly
+
+Every other person-written field is reachable through a flag, so the
+file, the log and the date move as one act. `needs:` is not, which is
+why this one field costs a hand-edit and a `--fix`. If the installed
+`.claude/bin/task` has grown a `--needs` flag — check with
+`.claude/bin/task new --help` — **use the flag and ignore the two steps
+above.** It is strictly better: it stamps `updated` itself and leaves
+no window in which the ledger is red.
 
 ## Finish it
 
@@ -341,7 +452,9 @@ exists so a thought does not have to become a task to be kept.
 - **Repair** — `.claude/bin/check-tasks --fix` only ever repairs what
   can be repaired mechanically: it deletes a `status:` key, reconciles
   a hand-moved file by appending a log line dated today with actor
-  `unknown`, sets a stale `updated` to today, and inserts a missing
+  `unknown`, sets a stale `updated` to today, accepts as current the
+  content of a file that was edited in place (the I-34 digest error —
+  the step **Declare a dependency** ends here), and inserts a missing
   ROADMAP line. **Say which of those apply before running it**, and get
   a yes. It never invents a past date and never resolves a dangling
   ROADMAP line — a line naming a file that does not exist is either a
@@ -366,7 +479,9 @@ one at a time. Do not batch them into a single confident sweep.
   differently is how a ledger stops being readable.
 - **Do not repair around the tooling.** If a verb fails, report the
   failure. A hand-edit that makes the validator quiet has hidden a real
-  problem, not solved one.
+  problem, not solved one. The one sanctioned hand-write is `needs:`,
+  which has no verb to fail around — and it ends by running the
+  validator, not by silencing it.
 
 ## When NOT to use this skill
 

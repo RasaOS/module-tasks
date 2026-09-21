@@ -58,7 +58,7 @@ Copy the shape, not the content:
   - 🚫 **TASK-LIT-031 closed** -- `duplicate` of TASK-LIT-042, which covers
     the same amendment with the third-party production included.
   - 🏗 **Ledger split by matter** -- `target:` is now declared in
-    `tasks.config.yml`; every task outside triage/ names its matter.
+    `tasks.config.yml`; every task outside triage/ and closed/ names its matter.
   - 🧭 **Phase DISC finished** -- all nine tasks terminal. Phase REVIEW opens
     Monday; its scope paragraph is in `ROADMAP.md`.
 ```

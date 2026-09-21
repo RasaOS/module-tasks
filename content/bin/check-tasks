@@ -959,10 +959,17 @@ def check_files(ledger):
                 report.error("I-19", "a task in triage/ carries no phase; it has not "
                                      "graduated yet", where=rel, line=at.get("phase"))
         else:
-            if phase is None:
-                report.error("I-19", "'phase' is required outside triage/", where=rel,
-                             hint="name the phase this task belongs to")
-            elif not isinstance(phase, str) or not re.match(RX_PHASE, phase):
+            # `closed/` is the one terminal reachable straight from triage/, so
+            # it is the only stage that can legitimately hold a phase-less task:
+            # declining a matter must not cost more than declining it, and
+            # forcing a phase would file the decline on the roadmap as though
+            # someone meant to do the work. Present-if-it-had-one, validated
+            # either way.
+            if phase is None and tf.stage != "closed":
+                report.error("I-19", "'phase' is required outside triage/ and closed/",
+                             where=rel, hint="name the phase this task belongs to")
+            elif phase is not None and (
+                    not isinstance(phase, str) or not re.match(RX_PHASE, phase)):
                 report.error("I-19", "phase '%s' is not a legal phase id" % phase, where=rel,
                              line=at.get("phase"))
 
@@ -971,7 +978,7 @@ def check_files(ledger):
         if cfg.targets:
             items = as_list(target)
             if target is None:
-                if tf.stage != "triage":
+                if tf.stage not in ("triage", "closed"):
                     report.error("I-25", "'target' is required; this project declares %s"
                                  % ", ".join(cfg.targets), where=rel)
             elif items is None:
@@ -979,7 +986,7 @@ def check_files(ledger):
                                      "'target: [%s]'" % cfg.targets[0], where=rel,
                              line=at.get("target"))
             elif not items:
-                if tf.stage != "triage":
+                if tf.stage not in ("triage", "closed"):
                     report.error("I-25", "'target' is empty; name at least one of %s"
                                  % ", ".join(cfg.targets), where=rel, line=at.get("target"))
             else:
@@ -1165,7 +1172,11 @@ def check_phase_map(ledger, pm):
     """I-20 through I-24."""
     report = ledger.report
     fixes = ledger.fixes
-    phased = [t for t in ledger.tasks if t.parsed and t.tid and t.stage != "triage"]
+    # Select on CARRYING a phase, not on stage: a closed/ task legitimately
+    # has none, and counting by stage over-reports in the "ROADMAP.md is
+    # absent" message.
+    phased = [t for t in ledger.tasks
+              if t.parsed and t.tid and t.stage != "triage" and t.fm.get("phase")]
 
     if not pm.present:
         if phased:

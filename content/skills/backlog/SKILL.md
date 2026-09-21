@@ -1,6 +1,6 @@
 ---
 name: backlog
-description: Read-only forward view of the task ledger — everything not yet finished, as one flat table. Renders tasks/{active,review,blocked,backlog,triage}/ with state, type, phase, priority and target, and flags ledger anomalies. Excludes terminal work. Use for "what am I doing now and what is next" — "/backlog", "show me the backlog", "what is queued", "what is in flight", "what is blocked", "what is waiting on a gate". Not for per-phase or historical views (use /roadmap) and not for changing anything (use /task).
+description: Read-only forward view of the task ledger — everything not yet finished, as one flat table. Renders tasks/{active,review,blocked,backlog,triage}/ with state, type, phase, priority and target, marks tasks waiting on an unfinished needs: dependency, and flags ledger anomalies. Excludes terminal work. Use for "what am I doing now and what is next" — "/backlog", "show me the backlog", "what is queued", "what is in flight", "what is blocked", "what is waiting on a gate", "what is waiting on another task". Not for per-phase or historical views (use /roadmap) and not for changing anything (use /task).
 ---
 
 # /backlog — the forward view
@@ -147,11 +147,37 @@ Glyphs — the exact set, identical to `/roadmap`:
 - Priority: `‼️ now` · `↑ high` · `·` (normal) · `↓ low`
 - Depth: prefix the **Title** cell with `📝 ` when the task is
   stub-depth
+- Dependency: prefix the **Title** cell with `⛓ ` when the task is
+  waiting on a dependency. Both prefixes can apply; order them
+  `⛓ 📝 `, always the same way, so the column stays scannable.
 
 **Depth is derived, never stored.** A task is stub-depth iff it has no
 `## Acceptance criteria` heading, or that heading holds no `- [ ]` /
 `- [x]` item with non-empty text after the checkbox. That is the one
 signal telling a reader which rows still need fleshing out.
+
+**Waiting is derived too, and it is not a state.** A task is *waiting
+on a dependency* iff its `needs:` list holds at least one id whose task
+is in neither `completed/` nor `closed/`. Read the other task's
+directory to decide; `needs:` itself never records whether it is met.
+
+Three things this rule is deliberately strict about:
+
+- **The terminal pair, not just `completed/`.** A need that reached
+  `closed/` counts as met here, because that is exactly the rule the
+  validator's I-28 uses. The two must agree — a view that called a task
+  waiting while the anomalies block stayed silent would be the same
+  disagreement the lockstep note above exists to prevent.
+- **`⛓` is not `🚫 Blocked`.** `blocked/` is a directory a verb put the
+  task in. `⛓` is a fact computed from frontmatter, and it can sit on a
+  row in any of the five states, including `🚧 Active`. Never render
+  one as the other, and never move a task because of a `⛓`.
+- **A need naming a task that is not in the ledger counts as
+  waiting.** It is a validator error (I-26) that the anomalies block
+  has already reported verbatim, and an id nobody can resolve is not an
+  id that finished. Marking the row `⛓` and leaving the diagnosis to
+  `/task check` is the honest reading; quietly treating it as met is
+  not.
 
 **If a value is missing or unrecognized, render it as `⚠️` — never
 substitute a default.** A task with no `type:`, or a `type:` outside the
@@ -193,22 +219,24 @@ Nothing but this. No preamble, no closing commentary.
 # 📋 Backlog — in flight, queued, and untriaged
 
 🚧 **Active** N · 👁 **Review** N · 🚫 **Blocked** N · 📋 **Backlog** N · 🗂 **Triage** N — **T total**
-📝 N stub-depth · ‼️ N at `now`
+📝 N stub-depth · ‼️ N at `now` · ⛓ N waiting on a dependency
 
 | ID | Title | State | Type | Phase | Pri | Updated |
 |---|---|---|---|---|---|---|
 | TASK-042 | Amend the retention schedule | 🚧 Active | 🔄 Change | 2 · Intake | ‼️ now | 2026-09-19 |
 | TASK-051 | 📝 Second-reader pass on the summary | 👁 Review | 📄 Record | 2 · Intake | · | 2026-09-18 |
 | TASK-038 | Awaiting the counterparty reply | 🚫 Blocked | 🔄 Change | 3 · Filing | ↑ high | 2026-09-11 |
-| TASK-060 | Draft the standing instruction | 📋 Backlog | 🔄 Change | 3 · Filing | · | 2026-09-20 |
+| TASK-060 | ⛓ Draft the standing instruction | 📋 Backlog | 🔄 Change | 3 · Filing | · | 2026-09-20 |
 | TASK-061 | 📝 Someone should look at the index | 🗂 Triage | 🔍 Inquiry | — | · | 2026-09-20 |
 ```
 
 The five state counters **must sum to the total**, and the total must
 equal the number of rows. Every task lands in exactly one group, so if
 they do not sum you have dropped or duplicated a row — fix that before
-emitting. `📝 stub-depth` and `‼️ now` sit on the second line precisely
-because they cross-cut the five and would otherwise break the sum.
+emitting. `📝 stub-depth`, `‼️ now` and `⛓ waiting` sit on the second
+line precisely because they cross-cut the five and would otherwise
+break the sum. Omit the `⛓` counter when it is zero; the other two are
+always shown.
 
 Add the `Target` column between `Phase` and `Pri` when, and only when,
 `tasks.config.yml#targets` is non-empty.
@@ -229,3 +257,9 @@ Add the `Target` column between `Phase` and `Pri` when, and only when,
 - The reasoning behind a phase (its scope paragraph) → read
   `tasks/ROADMAP.md` directly.
 - One task's full content → read the file.
+- *Which* tasks a row is waiting on → read that task file's `needs:`
+  line, or hand off to `/task`. This view marks **that** a row is
+  waiting, never on what: a list of ids does not survive a truncated
+  cell, and this skill runs no `.claude/bin/task` verb, not even a
+  read-only one.
+- Declaring or removing a dependency → `/task`. This view never writes.

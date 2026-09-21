@@ -1,6 +1,6 @@
 ---
 name: roadmap
-description: Read-only phase-organized view of the whole task ledger, finished work included — one section per phase from tasks/ROADMAP.md, in ROADMAP order, with per-phase progress and the provenance columns (created, updated, filed by, finished by). Covers all seven directories, and flags ledger anomalies. Use for "how is a phase going", "what have we finished", "show me the roadmap", "/roadmap", "/roadmap <phase>", "/roadmap full". Not for the flat unfinished-only view (use /backlog) and not for changing anything (use /task).
+description: Read-only phase-organized view of the whole task ledger, finished work included — one section per phase from tasks/ROADMAP.md, in ROADMAP order, with per-phase progress, the provenance columns (created, updated, filed by, finished by), and a mark on any task waiting on an unfinished needs: dependency. Covers all seven directories, and flags ledger anomalies. Use for "how is a phase going", "what have we finished", "show me the roadmap", "/roadmap", "/roadmap <phase>", "/roadmap full". Not for the flat unfinished-only view (use /backlog) and not for changing anything (use /task).
 ---
 
 # /roadmap — the phase view, history included
@@ -164,10 +164,40 @@ they share:
   `📄 Record`
 - Depth: prefix the **Title** cell with `📝 ` when the task is
   stub-depth
+- Dependency: prefix the **Title** cell with `⛓ ` when the task is
+  waiting on a dependency. Both prefixes can apply; order them
+  `⛓ 📝 `, always the same way, so the column stays scannable.
 
 **Depth is derived, never stored.** A task is stub-depth iff it has no
 `## Acceptance criteria` heading, or that heading holds no `- [ ]` /
 `- [x]` item with non-empty text after the checkbox.
+
+**Waiting is derived too, and it is not a state.** A task is *waiting
+on a dependency* iff its `needs:` list holds at least one id whose task
+is in neither `completed/` nor `closed/`. Read the other task's
+directory to decide; `needs:` itself never records whether it is met.
+
+Four things this rule is deliberately strict about:
+
+- **The terminal pair, not just `completed/`.** A need that reached
+  `closed/` counts as met here, because that is exactly the rule the
+  validator's I-28 uses. The two must agree — a view that called a task
+  waiting while the anomalies block stayed silent would be the same
+  disagreement the lockstep note above exists to prevent.
+- **`⛓` is not `🚫 Blocked`.** `blocked/` is a directory a verb put the
+  task in. `⛓` is a fact computed from frontmatter, and it can sit on a
+  row in any of the seven states. Never render one as the other.
+- **A need naming a task that is not in the ledger counts as
+  waiting.** It is a validator error (I-26) that the anomalies block
+  has already reported verbatim, and an id nobody can resolve is not an
+  id that finished. Marking the row `⛓` and leaving the diagnosis to
+  `/task check` is the honest reading; quietly treating it as met is
+  not.
+- **`⛓` on a `✅ Completed` row is the interesting one.** That is
+  exactly the condition I-28 warns about — finished while something it
+  declared it needed has not — so the warning and the mark appear
+  together, one in the anomalies block and one in the table. Do not
+  suppress either because the other is present.
 
 **If a value is missing or unrecognized, render it as `⚠️` — never
 substitute a default.** A blank where a required value belongs is a
@@ -220,7 +250,8 @@ In this order:
 3. **`## ⚠️ Unplaced`** — tasks outside `triage/` whose `phase:` names
    no declared phase, or which carry no `phase:` at all. **This section
    exists only when it is non-empty, and every row in it is a validator
-   error.** There is no legitimate unphased state outside `triage/`, so
+   error.** The only legitimately unphased stages are `triage/` (not yet
+   graduated) and `closed/` (a task declined straight out of triage), so
    this is not a bucket for orthogonal work — it is a defect report. Say
    so in one line above the table and point at `/task check`.
 
@@ -232,7 +263,7 @@ Nothing but this. No preamble, no closing commentary.
 # 📋 Roadmap — every phase, history included
 
 **T tasks** · ✅ N completed · 🗄 N closed · 🚧 N active · 👁 N review · 🚫 N blocked · 📋 N backlog · 🗂 N triage
-📝 N stub-depth
+📝 N stub-depth · ⛓ N waiting on a dependency
 
 ---
 
@@ -253,10 +284,10 @@ Nothing but this. No preamble, no closing commentary.
 
 | ID | Title | State | Type | Created | Filed by | Updated | Finished by | Outcome |
 |---|---|---|---|---|---|---|---|---|
-| TASK-060 | Draft the standing instruction | 📋 Backlog | 🔄 Change | 2026-09-20 | jmr | 2026-09-20 | — | — |
+| TASK-060 | ⛓ Draft the standing instruction | 📋 Backlog | 🔄 Change | 2026-09-20 | jmr | 2026-09-20 | — | — |
 | TASK-062 | 📝 Index the historical folders | 📋 Backlog | 🧹 Upkeep | 2026-09-20 | jmr | 2026-09-20 | — | — |
 
-✅ 24 terminal tasks collapsed (24 completed · 0 closed). `/roadmap 3` to expand.
+✅ 24 terminal tasks collapsed (24 completed · 0 closed · ⛓ 1 waiting). `/roadmap 3` to expand.
 
 ## 🗂 Triage — unphased by design
 
@@ -267,10 +298,17 @@ Nothing but this. No preamble, no closing commentary.
 
 The header counters **must sum to the total**, and the total must equal
 the number of tasks found on disk — including rows collapsed by the
-threshold and rows in the unplaced section. `📝 stub-depth` sits on the
-second line because it cross-cuts the seven and would break the sum.
+threshold and rows in the unplaced section. `📝 stub-depth` and
+`⛓ waiting` sit on the second line because they cross-cut the seven and
+would break the sum. Omit the `⛓` counter when it is zero.
 Every task appears in exactly one section: its phase, triage, or
 unplaced.
+
+**A collapsed row keeps its `⛓`.** Append `· ⛓ N waiting` to the
+collapse line whenever any collapsed row is waiting, and omit that
+clause when none is. Collapsing is a rendering economy for finished
+work; it is not permission to hide the one condition — a task finished
+while something it needed did not — that I-28 exists to catch.
 
 ## Style
 
@@ -293,3 +331,9 @@ unplaced.
 - A phase's scope paragraph and reasoning → read `tasks/ROADMAP.md`
   directly; this view deliberately renders none of that prose.
 - One task's full content → read the file.
+- *Which* tasks a row is waiting on → read that task file's `needs:`
+  line, or hand off to `/task`. This view marks **that** a row is
+  waiting, never on what: a list of ids does not survive a truncated
+  cell, and this skill runs no `.claude/bin/task` verb, not even a
+  read-only one.
+- Declaring or removing a dependency → `/task`. This view never writes.

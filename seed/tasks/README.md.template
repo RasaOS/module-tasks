@@ -89,7 +89,7 @@ tooling. Filing a task costs you one typed value and a title.
 | `created` | always | the allocator, once, never rewritten |
 | `created_by` | always | the allocator, once, never rewritten |
 | `updated` | always | every lifecycle command |
-| `phase` | outside `triage/` | you, when the task graduates |
+| `phase` | outside `triage/` and `closed/` | you, when the task graduates |
 | `target` | iff `targets` is declared | you |
 | `completed_by` | in `completed/` and `closed/` | `task pass` / `task close` |
 | `resolution` | in `closed/` only | `task close` |

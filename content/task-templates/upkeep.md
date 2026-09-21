@@ -1,8 +1,13 @@
 ---
 # -- TEMPLATE ---------------------------------------------------------
 # Replace every <...> placeholder before this file goes into a stage
-# directory. Comments are WHOLE-LINE only: a '#' written after a value
-# becomes part of that value, not a comment.
+# directory.
+#
+# HOW THIS BLOCK IS PARSED. A comment is a line that BEGINS with '#'. A
+# value is the whole rest of its line, so a '#' written after a value is
+# part of that value, not a comment -- and so is any explanation. Every
+# note below therefore sits on its own line, and every field line is bare:
+# uncomment one and you get a legal line, with nothing to trim off the end.
 #
 # -- Required, always (5) ---------------------------------------------
 # The allocator stamps id / created / created_by / updated. You choose
@@ -14,31 +19,40 @@ created_by: <handle>
 updated: <YYYY-MM-DD>
 #
 # -- Required by state: uncomment when that state arrives --------------
-# phase: required outside triage/, forbidden inside it. The value must
-# equal a phase id declared in tasks/ROADMAP.md.
+# `phase` -- required in backlog/ active/ review/ blocked/ completed/,
+# forbidden in triage/, and optional in closed/ (carry it only if the task
+# ever had one). The value must equal a phase id declared in
+# tasks/ROADMAP.md.
 # phase: <phase-id>
 #
-# target: required if and only if tasks/tasks.config.yml declares a
-# non-empty 'targets' list; forbidden otherwise. Always a list.
+# `target` -- required if and only if tasks/tasks.config.yml declares a
+# non-empty 'targets' list; forbidden otherwise. Always a list. A task
+# closed straight out of triage/ never acquired one and carries none.
 # target: [<declared-target>]
 #
-# The following are written by the command that performs the move.
-# Do not hand-write them.
-# completed_by: <handle>      -- completed/ and closed/ only
-# resolution: obsolete        -- closed/ only. One of:
-#                                superseded | duplicate | obsolete | wont-do
-# resolution_ref: <TASK-NNN>  -- closed/ only, and only when the
-#                                resolution is superseded or duplicate
+# The three below are written by the command that performs the move, not
+# by hand. They are here so you recognise them, not so you add them.
+#
+# `completed_by` -- an actor handle. completed/ and closed/ only.
+# completed_by: <handle>
+#
+# `resolution` -- closed/ only. One of the four words
+# superseded | duplicate | obsolete | wont-do.
+# resolution: obsolete
+#
+# `resolution_ref` -- closed/ only, and only when the resolution is
+# superseded or duplicate. The id of the task that replaced this one.
+# resolution_ref: <TASK-NNN>
 #
 # -- Optional ----------------------------------------------------------
-# priority: one of now | high | normal | low. Omit it for normal.
+# `priority` -- one of now | high | normal | low. Omit it for normal.
 # 'now' is a route, not a mood: it files straight into active/.
 # priority: normal
 #
-# needs: ids that must reach completed/ before this one can.
+# `needs` -- ids that must reach completed/ before this one can.
 # needs: [<TASK-NNN>]
 #
-# x-<anything>: project-owned. Preserved verbatim, never interpreted.
+# `x-<anything>` -- project-owned. Preserved verbatim, never interpreted.
 # x-<your-key>: <your value>
 ---
 
