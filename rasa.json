@@ -2,12 +2,12 @@
   "$schema": "https://rasa-os.github.io/schema/rasa.schema.v1.json",
   "contract_version": "1.3.0",
   "name": "rasa.module.tasks",
-  "version": "0.1.3",
+  "version": "1.0.0",
   "kind": "module",
   "aliases": [
     "module-tasks"
   ],
-  "description": "Portable task-management lifecycle (intake → triage → backlog → active ⇄ blocked → completed), mountable into any domain or orchestrator. Distilled from rasa.domain.code; engineering specifics replaced by a domain-defined done-gate.",
+  "description": "Portable task-management lifecycle, mountable into any domain or orchestrator. Seven directories are the state — triage, backlog, active, review, blocked, completed, closed — and there is no status: field to disagree with them. Every transition is one command that stamps the frontmatter, appends to the append-only tasks/history.tsv and moves the file. Ships two executables the project runs directly (.claude/bin/task, .claude/bin/check-tasks) so the lifecycle and the invariants that hold it are enforced rather than described. Domain-neutral by construction: the one varying concern — what 'done' requires — is delegated to the project-owned .claude/done-gate.md, and needs no version control to work.",
   "source": {
     "repo": "https://github.com/RasaOS/module-tasks",
     "branch": "main"
@@ -16,8 +16,9 @@
   "capabilities": [
     "task.lifecycle-orchestration",
     "task.intake-triage",
-    "task.phase-planning",
-    "task.change-audit"
+    "task.phase-registry",
+    "task.transition-audit",
+    "task.ledger-validation"
   ],
   "permissions": [
     "fs:write",
@@ -32,104 +33,140 @@
   "rasa": {
     "role": "L1-mountable-capability",
     "shape_pattern": "toolkit",
-    "note": "First module-kind Element. Mounts into a parent domain or orchestrator and installs a portable task lifecycle. The one domain-specific concern - what 'done' means - is delegated to a project-owned .claude/done-gate.md (seeded here, skip-if-exists). Domains extend via .claude/<domain>-task-rules.md."
+    "note": "The first module-kind Element. Mounts into a parent domain or orchestrator and installs a portable task lifecycle. The one domain-specific concern - what 'done' means - is delegated to a project-owned .claude/done-gate.md (seeded here, skip-if-exists); domains extend further via .claude/<domain>-task-rules.md. v1.0.0 is a clean break from 0.1.x: the frontmatter schema changed, the terminal transitions gained commands that perform them, and the substrate features 0.1.2/0.1.3 bolted on (the source clone, /sync, /promote, /whoami, the identity stamp, parent_kind tenant) were removed - they were a module claiming what its parent owns, and they cited canon amendment numbers that do not exist. A module claims only paths inside its own capability vocabulary: .claude/task-rules.md, .claude/task-templates/, the task/backlog/roadmap skills, .claude/bin/, .claude/done-gate.md and the tasks/ ledger. bin/migrate-tasks converts a 0.1.x ledger and is deliberately NOT installed - it is the one place allowed to read a version-control history, which is exactly why it must never reach content/."
   },
   "element": {
-    "description": "Element-owned task-management files mirrored into the install target's .claude/ per canon ELEMENT_CONTRACT.md §7. Refreshed on Element upgrade. The done-gate and the tasks/ ledger are NOT here — they are project-owned (see seed.files).",
+    "description": "Element-owned files mirrored into the install target per canon ELEMENT_CONTRACT.md §7. Refreshed on every Element upgrade, so nothing here may hold project state. The done-gate and the tasks/ ledger are NOT here - they are project-owned (see seed.files). Every file below is domain-neutral and is scanned for that by bin/check-manifest's hard-rule check before release.",
     "files": [
       {
         "from": "content/task-rules.md",
         "to": ".claude/task-rules.md",
         "policy": "file-replace",
-        "note": "The portable, domain-agnostic task lifecycle spine. Element-owned; refreshed on upgrade. References .claude/done-gate.md for the verification contract and .claude/<domain>-task-rules.md for domain extensions — it hardcodes neither."
+        "note": "The lifecycle spine: the seven directories, the transition set, the frontmatter contract, the id grammar, and the discipline around them. Element-owned; refreshed on upgrade. Names .claude/done-gate.md as the verification seam and .claude/<domain>-task-rules.md as the extension seam; it hardcodes neither's contents."
       },
       {
         "from": "content/task-templates/",
         "to": ".claude/task-templates/",
         "policy": "directory-mirror",
-        "note": "The four category templates (stub / spec / bug / hotfix). Element-owned; refreshed on upgrade. Generalized — no src/e2e/PR/build references."
+        "note": "One body template per task type (change / defect / upkeep / inquiry / record), written by bin/task new. Element-owned; refreshed on upgrade. Depth is derived from whether ## Acceptance criteria holds a real checkbox, so there is no separate stub template and no depth field."
       },
       {
         "from": "content/skills/",
         "to": ".claude/skills/",
         "policy": "directory-mirror",
-        "note": "Task-management skills: /task (lifecycle driver), /backlog (read+render), /roadmap (read+render). Element-owned; refreshed on upgrade."
+        "note": "The three task skills: /task (drives the lifecycle through .claude/bin/task), /backlog and /roadmap (read + render). Only these three - a module must not claim a skill name outside its own capability vocabulary, which is how v0.1.2's /sync, /promote and /whoami silently overwrote the same-named skills of domain-code and domain-writer under directory-mirror."
+      },
+      {
+        "from": "content/bin/",
+        "to": ".claude/bin/",
+        "policy": "directory-mirror",
+        "note": "The two executables the project runs: bin/task (the 12 lifecycle verbs, each one atomic command that writes the frontmatter, appends to tasks/history.tsv and performs the move) and bin/check-tasks (the validator - every invariant the spine states, mechanically). Element-owned; refreshed on upgrade. Pure standard library, no version control, no network: they must run in a project that has neither."
       },
       {
         "from": "content/README.md",
         "to": "content/README.md",
         "policy": "opt-in",
-        "note": "Describes what this module ships and how it installs. Fork/author-time doc; not installed into consumer projects."
+        "note": "What this module ships and where each file lands. Fork/author-time documentation; policy opt-in means bin/init registers it and installs nothing. Its install table is generated from this manifest - see the bump ritual in CLAUDE.md."
       }
     ]
   },
   "seed": {
-    "description": "One-time, project-owned files copied at install only (skip-if-exists), per canon ELEMENT_CONTRACT.md §7. These belong to the consuming project after install and are never overwritten on Element upgrade — the project's done-gate, its task ledger, and the lifecycle scaffold.",
+    "description": "One-time, project-owned files copied at install only, per canon ELEMENT_CONTRACT.md §7. These belong to the consuming project the moment they land and are never overwritten by an Element upgrade - the project's done-gate, its task ledger, its config and its history. A re-init is non-destructive for every entry here.",
     "files": [
       {
         "from": "seed/done-gate.md.template",
         "to": ".claude/done-gate.md",
         "policy": "skip-if-exists",
-        "note": "The per-domain verification contract — what 'done' requires. Project-owned; the domain fills it (code = build+test+review; legal = conflict-check + partner sign-off; etc.). Ships with a minimum-honest default + commented domain examples. Placeholder-free per the documented skip-if-exists policy gap."
+        "note": "The per-project verification contract - what review/ -> completed/ requires here. Project-owned; the domain fills it (a clinic writes clinical sign-off; a firm writes conflict check + partner approval; a novelist writes the continuity pass). Ships a minimum-honest default plus commented examples. This is the single file in the Element allowed to carry stack vocabulary, and bin/check-manifest allowlists it by name for exactly that reason."
       },
       {
         "from": "seed/tasks/README.md.template",
         "to": "tasks/README.md",
         "policy": "skip-if-exists",
-        "note": "Human orientation to the tasks/ folder: the lifecycle, the dirs, intake vs triage, categories, the done-gate pointer."
+        "note": "Human orientation to tasks/: the seven directories, intake vs triage, the five always-required frontmatter keys, the two commands, and the pointer to the done-gate."
       },
       {
         "from": "seed/tasks/intake.md.template",
         "to": "tasks/intake.md",
         "policy": "skip-if-exists",
-        "note": "Starter pre-triage capture file. Project-owned; appended to over the life of the project."
+        "note": "Pre-triage capture: prose with no ids, appended to over the life of the project. The only place in the ledger where something may be unstructured."
       },
       {
         "from": "seed/tasks/ROADMAP.md.template",
         "to": "tasks/ROADMAP.md",
         "policy": "skip-if-exists",
-        "note": "Starter phase registry — the SOLE source of phase membership. Project-owned."
+        "note": "The phase registry. Every phase a task may name is a `## Phase <id> - <name>` heading here, and every phased task is listed under exactly one of them; bin/check-tasks proves the frontmatter and this file agree in both directions. Project-owned - the phases are the project's, not the Element's."
       },
       {
-        "from": "seed/tasks/triage/.gitkeep",
-        "to": "tasks/triage/.gitkeep",
-        "policy": "skip-if-exists",
-        "note": "Lifecycle dir scaffold (bin/init does not implement scaffold.directories, so the dirs ship as seed .gitkeeps). Tracked-but-untriaged tasks."
+        "from": "seed/tasks/tasks.config.yml.template",
+        "to": "tasks/tasks.config.yml",
+        "policy": "init-only-with-sha",
+        "note": "Optional project declarations: the target axis (platforms / matters / manuscripts) that makes the target field required, the actor and series allowlists, and migrated_on - the attribution ratchet date, stamped with {{TODAY}} at install so that unknown attributions can persist from before it and can never be created after it. A project that deletes this file is still fully valid."
       },
       {
-        "from": "seed/tasks/backlog/.gitkeep",
-        "to": "tasks/backlog/.gitkeep",
+        "from": "seed/tasks/AUDIT.md.template",
+        "to": "tasks/AUDIT.md",
         "policy": "skip-if-exists",
-        "note": "Lifecycle dir scaffold. Phase-placed, category-assigned tasks."
+        "note": "The curated, append-only chronological record of meaningful actions (ships, milestones, rule changes, incidents). task-rules.md makes it mandatory; v0.1.x mandated it and shipped nothing, so consumers hit a missing file on their first ship. Project-owned."
       },
       {
-        "from": "seed/tasks/active/.gitkeep",
-        "to": "tasks/active/.gitkeep",
+        "from": "seed/tasks/history.tsv.template",
+        "to": "tasks/history.tsv",
         "policy": "skip-if-exists",
-        "note": "Lifecycle dir scaffold. In-flight tasks (at most one per worker)."
+        "note": "The append-only transition log, seeded with its header row only. Written by bin/task, never by hand. It is simultaneously the audit trail a project without version control has never had, the corroboration for created / created_by / completed_by, and the id-retirement ledger that stops a deleted task's number from ever being reissued."
       },
       {
-        "from": "seed/tasks/blocked/.gitkeep",
-        "to": "tasks/blocked/.gitkeep",
+        "from": "seed/tasks/triage/.keep",
+        "to": "tasks/triage/.keep",
         "policy": "skip-if-exists",
-        "note": "Lifecycle dir scaffold. Parked tasks with an external blocker."
+        "note": "Stage directory scaffold (bin/init does not implement scaffold.directories, so the seven stages ship as seed placeholders). triage/: filed, has an id, uncommitted - the only stage where a phase is forbidden."
       },
       {
-        "from": "seed/tasks/completed/.gitkeep",
-        "to": "tasks/completed/.gitkeep",
+        "from": "seed/tasks/backlog/.keep",
+        "to": "tasks/backlog/.keep",
         "policy": "skip-if-exists",
-        "note": "Lifecycle dir scaffold. Terminal state — acceptance criteria met and the done-gate passed."
+        "note": "Stage directory scaffold. backlog/: phased, not started."
+      },
+      {
+        "from": "seed/tasks/active/.keep",
+        "to": "tasks/active/.keep",
+        "policy": "skip-if-exists",
+        "note": "Stage directory scaffold. active/: in flight."
+      },
+      {
+        "from": "seed/tasks/review/.keep",
+        "to": "tasks/review/.keep",
+        "policy": "skip-if-exists",
+        "note": "Stage directory scaffold. review/: the work is finished and the done-gate has not yet passed. New in v1.0.0, and the missing state that caused most of the 0.1.x drift - a partner's review, a clinical sign-off and a manuscript cooling-off read are all literally this."
+      },
+      {
+        "from": "seed/tasks/blocked/.keep",
+        "to": "tasks/blocked/.keep",
+        "policy": "skip-if-exists",
+        "note": "Stage directory scaffold. blocked/: cannot proceed; enterable from backlog, active or review and returned by bin/task unblock to whichever of them it came from. Requires a non-empty ## Blocker section."
+      },
+      {
+        "from": "seed/tasks/completed/.keep",
+        "to": "tasks/completed/.keep",
+        "policy": "skip-if-exists",
+        "note": "Stage directory scaffold. completed/: terminal, the done-gate passed. The count here is the number everyone reads, which is why work that ended WITHOUT being done goes to closed/ instead."
+      },
+      {
+        "from": "seed/tasks/closed/.keep",
+        "to": "tasks/closed/.keep",
+        "policy": "skip-if-exists",
+        "note": "Stage directory scaffold. closed/: terminal, ended without being done - superseded, duplicate, obsolete or wont-do, each naming who closed it. New in v1.0.0; it is what keeps the completed/ count honest."
       },
       {
         "from": "seed/rasa.lock.json.template",
         "to": ".claude/rasa.lock.json",
         "policy": "init-only-with-sha",
-        "note": "Stamped with the Element HEAD commit SHA at init time. Lockfile shape per canon Spec §6 (Connection Contract). Written only when absent; an existing lockfile (and its overrides[]) is never clobbered. Substitutes the standard {{ELEMENT_*}} / {{TODAY}} placeholders via bin/init."
+        "note": "Stamped with the Element HEAD SHA at init. Lockfile shape per canon Spec §6 (Connection Contract). Written only when absent; an existing lockfile and its overrides[] survive a re-init. When this module is co-installed under a parent that also stamps a lockfile the parent's is authoritative (single-writer-per-path, Lock L-004); in the kernel pull model each Element gets its own holding folder, so there is no collision."
       }
     ]
   },
   "scaffold": {
-    "description": "Empty directories created at init by the declarative installer. The tasks/ lifecycle dirs ship as seed .gitkeeps instead (bin/init does not implement scaffold.directories), so this stays empty.",
+    "description": "Empty directories created at init by the declarative installer. bin/init does not implement scaffold.directories, so the seven stage directories ship as seed .gitkeep entries instead and this stays empty rather than declaring something nothing performs.",
     "directories": []
   }
 }

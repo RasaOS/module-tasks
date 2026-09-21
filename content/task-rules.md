@@ -1,531 +1,467 @@
-# Task Rules — `rasa.module.tasks`
+# Task rules — `rasa.module.tasks` v1.0.0
 
-These rules govern **every** task in `tasks/`. They are the portable,
-domain-agnostic task-management lifecycle distilled from
-`rasa.domain.code` and shipped as a mountable Element. They apply
-unchanged whether the parent is a software domain, a legal domain, a
-healthcare domain, a writing domain, or an orchestrator coordinating
-across many of them.
+The law for every task under `tasks/`. The same law for a software project,
+a law firm, a clinic and a novelist: nothing here assumes a version-control
+store, a toolchain, or the vocabulary of any one trade.
 
-> **This file is domain-neutral by design.** Anything stack-specific —
-> what "verified" means, what a "change" is, which files are gated, the
-> commands to run — lives in two places this file points to, never
-> inline:
->
-> 1. **`.claude/done-gate.md`** — the parent domain's definition of
->    *what "done" requires* (the verification contract). Code fills it
->    with build+test+review; legal with cite-check + partner review;
->    health with clinical-rule validation + compliance sign-off. This
->    file references the done-gate; it never hardcodes one. See
->    "The done-gate" below.
-> 2. **Domain extension files** — `.claude/<domain>-task-rules.md`
->    (e.g. `code-task-rules.md`, `legal-task-rules.md`). A domain that
->    needs extra task discipline beyond the portable core adds a prefix
->    file; this file is read first, the extension second. The prefix is
->    a discovery hint, not a gate. Pure cross-domain work reads only
->    this file. See "Domain extensions" below.
->
-> The parent's `CLAUDE.md` owns project-specific conventions, the
-> concrete done-gate commands, and the gated-file list. Read it
-> alongside this file before starting work.
+Three seams carry everything that is *not* portable. This file names them
+and never speaks for them:
 
-## The done-gate
+| seam | owner | holds |
+|---|---|---|
+| `.claude/done-gate.md` | the project | what "done" requires here |
+| `.claude/<domain>-task-rules.md` | the domain | extra discipline this domain needs |
+| `tasks/tasks.config.yml` | the project | its actors, its targets, its id series |
 
-A task is **done** when two things are both true:
+Read this file first, the extension second. An extension *adds*; it never
+overrides. A project with neither file is fully valid.
 
-1. **Its acceptance criteria are met** — every checklist item in the
-   task spec is satisfied and *actually verified*, not assumed.
-2. **The domain's done-gate passes** — the verification contract the
-   parent domain defines in `.claude/done-gate.md`.
+Two commands, installed at `.claude/bin/`:
 
-The done-gate is the one piece of "done" that varies by domain, so it
-is the one piece this file refuses to hardcode. The portable contract
-is only the *shape*:
+- **`bin/task <verb> <id>`** — the only sanctioned way to move a task.
+- **`bin/check-tasks [--fix]`** — the enforcement layer. Run it before you
+  call anything finished. `--fix` repairs the mechanical subset; it never
+  invents a date and never invents a person.
 
-- The done-gate is a checklist of gates, each of which must pass before
-  a task leaves `active/` for `completed/`.
-- Each gate is **objectively checkable** — a command that exits zero, a
-  named reviewer's approval, a document that exists — not a feeling.
-- If a gate cannot pass and you cannot make it pass in scope, the task
-  is **not done**: write a blocker and park it (see "The blocked
-  state"), or report it honestly (see "Honest reporting").
-- **Never bypass the gate.** Whatever the domain's mechanism, the
-  equivalent of "skip verification to ship faster" is forbidden.
+Every rule below is marked either **`I-nn`** — the invariant `bin/check-tasks`
+enforces it under, and prints by that id — or **judgement**, meaning no
+machine can settle it and a person must. There is no third kind. A rule with
+no check and no admission that it needs a person is a rule that gets broken
+quietly, and v0.1.x was full of them.
 
-If `.claude/done-gate.md` is absent, the default gate is the minimum
-honest bar: *every acceptance criterion is checked and a second party
-(human reviewer) has approved.* A domain SHOULD replace this with its
-real gate; running on the default is a smell, not a destination.
-
-## Scope discipline
-
-- One task = one unit of shippable work. Do not bundle unrelated
-  changes into a single task.
-- Touch only the artifacts listed in the task's "Artifacts expected to
-  change" section. If you need to touch something outside that list,
-  **add it to the task file with a one-line justification before
-  changing it.**
-- Do not "improve adjacent work while you're in there." Out of scope.
-- Do not add scope — features, structure, options — not required by the
-  acceptance criteria.
-
-("Artifacts" is deliberately neutral: source files, contract clauses,
-care-pathway documents, manuscript chapters — whatever this domain
-produces.)
-
-## Every change is task-linked (the change-audit rule)
-
-**Every change to a domain artifact is linked to a task.** No exception
-— not a planned piece of work, not a one-line urgent fix, not a "quick
-change" made under pressure. The task is the audit trail; a change with
-no task is a hole in the record no one can review later.
-
-This applies to **the artifacts the domain ships and to its
-running/operative configuration**. It does not apply to documentation,
-the task files themselves, or `.claude/` meta — those carry no
-operative risk and need no task.
-
-- **Before a change, there should be a task.** Working something
-  trivial? It still gets a task. If a full spec is overkill, a one-line
-  stub is enough — but the task must exist and be linked.
-- **A stub is acceptable; nothing is not.** The bar is "a task exists,"
-  not "a task is fully spec'd." An honestly-flagged stub — title, why
-  it wasn't spec'd, the artifacts touched — keeps the audit trail
-  whole. Spec it retroactively with `/task` if it matters.
-- **The change ledger.** `tasks/CHANGES.md` is the append-only record:
-  every artifact/config change, its linked task, who made it, the date,
-  the artifacts. This is the long-term audit-and-review surface.
-
-**Enforcement is domain-specific.** A software domain can enforce this
-with a pre-commit hook (e.g. a `task-guard` that auto-stubs an
-unlinked commit); a domain whose "commits" are document revisions
-enforces it at its own checkpoint. The *rule* holds regardless of
-whether any automated enforcement is wired; the parent domain decides
-the mechanism and documents it in `.claude/done-gate.md` or its
-extension file.
-
-## Files that require explicit permission to modify
-
-Touching any of these = blocker, not autonomous work. The exact list is
-domain-specific — the parent's `CLAUDE.md` enumerates the gated
-artifacts. Process files are gated everywhere:
-
-- **This task system's own files** — `CLAUDE.md`, `.claude/task-rules.md`,
-  `.claude/done-gate.md`, `.claude/task-templates/`, `.claude/skills/`,
-  and any `.claude/<domain>-task-rules.md` extension.
-- **Whatever the domain marks as canonical / high-blast-radius** — its
-  source-of-truth schema, its operative configuration, its
-  infrastructure or compliance-controlled files. The done-gate or the
-  parent `CLAUDE.md` names them.
-
-If a task requires changing a gated artifact, surface it in the task
-file's blocker section and stop.
-
-## State machine
+## 1. The directory is the state
 
 ```
-tasks/intake.md  →  tasks/triage/  →  tasks/backlog/  →  tasks/active/  ⇄  tasks/blocked/  →  tasks/completed/
-   (raw)            (formalized,       (phase +              (in              (parked,            (done-gate
-                     no phase/cat)      category assigned)    flight)          ext. dep)            passed)
+tasks/intake.md → triage/ → backlog/ → active/ → review/ → completed/
+                                ↕          ↕        ↕
+                                └──── blocked/ ─────┘
+                     (any state) ──────────────────→ closed/
 ```
 
-- **`intake.md`** is a single markdown file holding raw notes,
-  observations, and complaints that haven't yet decided to become
-  tasks. Pre-triage. No `TASK-NNN` id. The lowest-friction capture
-  layer. See "The intake layer" below.
-- **`triage/`** holds tracked-but-untriaged tasks — filed with a
-  `TASK-NNN` id but no phase, no category, no priority. A task sits here
-  until it is *graduated* (category + phase assigned → `mv` to
-  `backlog/`) or pulled straight to `active/`. Triage tasks are the one
-  exception to the phase rule — they are deliberately not in
-  `ROADMAP.md`. See "The triage holding area" below.
-- **`backlog/`** holds phase-placed, category-assigned tasks ready to be
-  worked. The category (Stub / Spec / Bug / Hotfix) is declared in the
-  task's frontmatter. See "Categories" below.
-- **`active/`** should hold at most one task at a time per worker.
-- **`blocked/`** is a *parked state* for tasks that were in `active/`
-  but hit an external blocker (missing access, waiting on another
-  party, third-party outage, undecided call). The task file moves to
-  `tasks/blocked/`; status becomes `blocked`; the blocker is named in
-  the file. See "The blocked state" below.
-- **`completed/`** is the terminal state — acceptance criteria met and
-  the done-gate passed. Work that is finished-but-not-yet-verified stays
-  in `active/`.
-- Move the task file as you transition states (use your domain's
-  version-control move, e.g. `git mv`, when one applies).
+| directory | meaning | `phase:` |
+|---|---|---|
+| `triage/` | filed, has an id, nothing promised yet | forbidden (I-19) |
+| `backlog/` | phased, not started | required |
+| `active/` | in flight | required |
+| `review/` | work finished; **the done-gate has not passed yet** | required |
+| `blocked/` | cannot proceed; enterable from backlog, active or review | required |
+| `completed/` | terminal — the done-gate passed | required |
+| `closed/` | terminal — ended **without** being done | required |
 
-**Hotfixes skip part of the lifecycle.** A Hotfix-category task uses the
-`HOTFIX-NNN` id space (not `TASK-NNN`), is filed directly to
-`tasks/active/`, and bypasses phase placement entirely — it doesn't go
-in `ROADMAP.md`. See "Categories" below.
+**I-01** — a file is a task if and only if it is a `.md` file directly inside
+one of those seven directories. Anything else under `tasks/` — your own
+notes, a register, a sub-folder of source material — is left alone and
+listed once as information. The ledger has exactly seven states and no
+hidden eighth.
 
-### The status field
+`review/` and `closed/` are new, and they are the two that make the model
+honest. **`review/`** is where the done-gate runs; v0.1.x had nowhere to put
+finished-but-unverified work, so it ordered that work to stay in `active/`
+while also capping `active/` — two rules that cannot both be obeyed. It is
+also the most domain-native state in the set: a partner's review, a clinical
+sign-off and a manuscript cooling-off read are all literally this.
+**`closed/`** keeps the terminal count honest, because `ls completed/ | wc -l`
+is the number everyone reads and folding superseded, duplicated, obsolete and
+abandoned work into it makes that number a lie. A task that actually got done
+therefore carries no `resolution` field at all.
 
-Every task spec declares `status:` in its frontmatter, matching the
-directory it lives in:
+### Why `status:` no longer exists
+
+v0.1.x recorded the state twice — the directory, and `status:` in the
+frontmatter — and required them to agree. Measured across the installed base:
+**`status:` disagreed with its directory in 301 of the 558 real task files,
+and not one file was sitting in a directory nobody meant to put it in.**
+(263 still disagree if you forgive the two spellings of the terminal state.
+Either number is the same verdict.)
+
+The distribution is the lesson. Nobody mis-files a directory, because moving
+the file *is* the act of changing state. The frontmatter line is a second
+write carrying no new information, so it gets skipped — and once skipped it
+is indistinguishable from a deliberate value. Enforcing the old rule harder
+means a validator whose first run prints 301 errors, which is a validator
+someone deletes in week one. So the field is deleted, not policed: the
+violation is now unrepresentable rather than merely detectable. **I-10** —
+the key `status` is a hard error anywhere in a task file.
+
+The principle generalises: **one fact, one home.** A fact is stored twice only
+when it is immutable *and* machine-written. Hence no `title:` key (the H1 is
+the title), no `blocks:` key (the inverse of `needs`, derived), and no depth
+or category key (depth is derived from whether the acceptance criteria hold a
+real checkbox).
+
+## 2. Every move goes through `bin/task`
+
+| from | verb | to |
+|---|---|---|
+| — | `new` | `triage/`, or `backlog/` with `--phase`, or `active/` with `--priority now` |
+| `triage/` | `graduate --phase P` | `backlog/` |
+| `backlog/` | `demote` | `triage/` (drops the phase) |
+| `backlog/` | `start` | `active/` |
+| `active/` | `park` | `backlog/` |
+| `active/` `backlog/` `review/` | `block` | `blocked/` |
+| `blocked/` | `unblock` | back to wherever it came from |
+| `active/` | `submit` | `review/` |
+| `review/` | `reject` | `active/` |
+| `review/` | `pass --by WHO` | `completed/` |
+| any | `close --resolution R --by WHO [--ref ID]` | `closed/` |
+| `completed/` `closed/` | `reopen` | `active/`, `backlog/` or `triage/` |
+
+One verb does three things **in one act**: writes the conditional
+frontmatter, appends a line to `tasks/history.tsv`, moves the file. That is
+the whole fix for the 301 stale statuses — the separate, easy-to-forget
+second edit no longer exists as a step a person can skip.
+
+Moving a file by hand still leaves a valid tree, and is caught by **I-33**:
+the directory must equal the `to` of the task's last history line. `--fix`
+reconciles it with a line dated today, actor `unknown`, note `reconciled`. It
+will not fabricate the date you actually did it on.
+
+## 3. The frontmatter contract
 
 ```yaml
-status: triage | backlog | active | blocked | completed
+---
+id: TASK-LIT-042           # immutable, allocated once by `bin/task new`
+type: change               # the one value a person types at filing
+created: 2026-09-14        # written by the allocator, never rewritten
+created_by: para1          # written by the allocator, never rewritten
+updated: 2026-09-20        # written by every `bin/task` operation
+phase: DISC                # required outside triage/, forbidden inside it
+target: [smith-v-acme]     # required iff this project declares targets
+priority: now              # optional: now | high | normal | low
+needs: [TASK-LIT-038]      # optional: the only dependency field
+x-matter_number: 2:26-cv-01187   # any x- key is yours, preserved, uninterpreted
+---
+
+# TASK-LIT-042: Amend the protective order for third-party production
+
+## Acceptance criteria
+- [ ] …
 ```
 
-Status and directory must agree — the same fact recorded twice for ease
-of inspection. The directory move and the frontmatter change happen
-together. A task in `tasks/blocked/` with `status: active` is a bug; fix
-the frontmatter or fix the directory.
+| field | required | values | written by | checks |
+|---|---|---|---|---|
+| `id` | always | `TASK-[SERIES-]NNN[a]` | `bin/task new` | I-04 I-05 I-06 I-07 I-08 |
+| `type` | always | `change` `defect` `upkeep` `inquiry` `record` | a person, at filing | I-12 |
+| `created` | always | `YYYY-MM-DD`, not future | the allocator, once | I-15 I-35 |
+| `created_by` | always | an actor handle, or `unknown` | the allocator, once | I-17 I-18 |
+| `updated` | always | `created ≤ updated ≤ today` | every `bin/task` write | I-16 I-34 I-35 |
+| `phase` | outside `triage/` | a phase id declared in `tasks/ROADMAP.md` | a person, at graduation | I-19 I-20 I-22 |
+| `target` | iff targets declared | members of `tasks.config.yml#targets` | a person | I-25 |
+| `completed_by` | in `completed/`+`closed/` | an actor handle, or `unknown` | `bin/task pass` / `close` | I-29 I-30 |
+| `resolution` | in `closed/` only | `superseded` `duplicate` `obsolete` `wont-do` | `bin/task close` | I-29 I-30 |
+| `resolution_ref` | iff superseded/duplicate | an existing id, not this one | `bin/task close` | I-29 |
+| `priority` | no | `now` `high` `normal` `low` (default `normal`) | a person | I-13 I-14 |
+| `needs` | no | existing ids, acyclic | a person | I-26 I-27 I-28 |
+| `x-*` | no | anything | you | exempt from I-11 |
 
-### The blocked state
+Filing costs a person **one typed value (`type`) and a title.** Everything
+else is stamped, or typed once later at graduation.
 
-A task in `blocked/` was being worked but hit an **external** dependency
-that prevents progress. Examples:
+- **I-02 / I-03** — the grammar is a deliberately small subset: one key per
+  line, plain scalars or flow lists, no indentation, no block scalars, no
+  anchors, no `null`, no duplicate keys. It parses without a third-party
+  library, because a gate that needs one is a gate that does not run.
+- **I-11** — an unrecognized bare key is an error; prefix it `x-` and it is
+  legal, preserved, never interpreted. That is the only extension seam, and
+  it is deliberately visible.
+- **I-07 / I-08** — the filename is `<id>-<slug>.md` and the body's single H1
+  is `# <id>: <title>`. The id appears three times; all three are
+  machine-written, which is the one case where duplication is allowed.
 
-- Waiting on a decision from another party / an owner / the user.
-- A third party is unavailable or undocumented.
-- Missing access or a credential only a specific person can grant.
-- Waiting on an upstream task that hasn't shipped.
+## 4. `phase:` — and the rule it reverses
 
-The blocked file must have a `## Blocker` section with: what's blocking,
-who or what would unblock it, when to check back. Without that section
-the task is not blocked — it's abandoned, which is a different problem.
+**This reverses a v0.1.x rule. Read it even if you knew the old ones.**
+v0.1.x said: *ROADMAP.md is the sole registry; never record the phase in the
+task file, because a second copy drifts.* **Replaced.** The installed base
+ignored it — 522 of 558 real files carry a `phase:` key the old rules forbade
+— because the phase is the first thing a reader of a task file wants and the
+old design made them open a second document to get it. v1.0.0 keeps both
+copies and proves they agree instead of forbidding one:
 
-Returning from blocked to active is a move back to `active/` plus a
-status flip. A task is **not blocked** if the obstacle is "I don't know
-how" (recon problem), "this is hard" (just work), or "I forgot" (move
-back to `backlog/`). Blocked is for *external* dependencies only.
+- **I-19** — `phase` present on every task outside `triage/`, absent inside it.
+- **I-20** — the value equals, case-sensitively, a phase id declared by a
+  `## Phase <id> — <name>` heading in `tasks/ROADMAP.md`.
+- **I-22** — ROADMAP lists that task exactly once, under exactly that phase.
+  `--fix` inserts a missing line and removes a misplaced one, preserving the
+  existing order: the order is the one you intend to work in, and is never
+  resorted for you.
+- **I-23 (warn)** — a ROADMAP line whose title text has drifted from the
+  task's own H1.
+- **I-24** — no dangling entries. Never auto-fixed; a line naming a missing
+  file is either a lost task or a stale promise, and only you know which.
+- **I-21 (warn)** — every phase heading has a scope paragraph. A phase with
+  no scope is a label, not a plan.
 
-## Closing report (mandatory)
+A phase is a name, a scope paragraph saying what is in and what is out, and
+an ordered list of tasks. Whether a task *fits* that scope is **judgement** —
+the only part of the phase system no machine can check for you.
 
-When a task reaches the done-gate, the closer **must** post a completion
-report with this shape. The point is one-glance status — a reviewer
-scans it in five seconds and decides whether to dig in. "What you need
-to do next" is non-negotiable; every task tells the reviewer exactly
-what action to take.
+## 5. `target:` — what the work is for
+
+The axis your project works along, declared by you in
+`tasks/tasks.config.yml#targets`, never by this Element:
+
+```yaml
+targets: [intake, litigation, appeals]     # a firm, by practice
+targets: [manuscript, screenplay]          # a novelist, by work
+targets: []                                # a project with one surface
+```
+
+**I-25** — if that list is non-empty, every task outside `triage/` carries a
+non-empty `target` drawn from it. If the list is empty or absent, `target`
+must be absent: a value against an undeclared axis is an error, not a shrug.
+Always a list, even with one member.
+
+## 6. `type:` — what kind of work this is
+
+| type | the deliverable | e.g. |
+|---|---|---|
+| `change` | something the project produces is different afterwards | draft a new clause; add a capability; rewrite a chapter |
+| `defect` | something is wrong and must be corrected | a wrong citation; a miscalculated figure; a continuity error |
+| `upkeep` | maintenance that changes no outcome | re-file old records; renew a subscription; tidy a naming scheme |
+| `inquiry` | the deliverable is an answer, not an alteration | can we do this at all?; why did that take three weeks?; what does the statute require? |
+| `record` | the deliverable is a document | a decision record; meeting notes; a procedure write-up |
+
+**I-12** — required, one of the five, no unset and no legacy value. Every file
+in the installed base mapped to a real one; the mapping is in
+`tasks/MIGRATION-REVIEW.md`, written by `bin/migrate-tasks`.
+
+**There is no urgent *type*.** Urgency is `priority: now`, which composes with
+all five — an urgent `record` (a filing due in four hours) is now expressible,
+which no category system here could say before. v0.1.x gave urgent work its
+own id space; that forced a reference-breaking rename every time the urgency
+passed, and it was never once used.
+
+## 7. `priority:` — and `now` as a route
+
+**`now` is a route, not a mood.** **I-14** — a task with `priority: now` may
+not sit in `triage/` or `backlog/`. If it is genuinely now, it is being
+worked, waiting on a gate, blocked, or finished. Anything else is a `high`.
+
+Work filed without any stated urgency is `normal` and goes to the back: do
+not re-order the phase list to make room, do not expand it into a full spec,
+do not split it into siblings. Expand a spec close to execution, not at
+filing. If you cannot tell whether something jumps the queue, ask — one round
+trip beats a wrong placement. **Judgement.**
+
+## 8. `needs:` — the only dependency field
+
+Ids that must reach `completed/` before this one can. **I-26** they exist, are
+well-formed, exclude this task, and do not repeat; **I-27** the graph is
+acyclic and the error prints the cycle; **I-28 (warn)** a task in `completed/`
+whose `needs` are not themselves finished.
+
+No `blocks:` key — it is the inverse of `needs`, and derived. No "related"
+key either: a link with no semantics is prose, so put it under `## Notes`.
+
+## 9. The done-gate
+
+A task is done when **both** are true:
+
+1. **Its acceptance criteria are met** — every checkbox satisfied and
+   *actually verified*, not assumed.
+2. **The project's done-gate passes** — the contract in `.claude/done-gate.md`.
+
+The done-gate is the one part of "done" that varies by domain, so it is the
+one part this file refuses to state. Portable is only its shape and its
+*position*:
+
+- It runs on the `review/` → `completed/` transition. Nowhere else.
+- Each gate is **objectively checkable** — something that either produced a
+  result or did not, a named person who approved, a document that exists —
+  never a feeling.
+- If a gate cannot pass and you cannot make it pass in scope, the task is
+  **not** done: block it (§10) or report it honestly (§12).
+- **Never bypass the gate.** Whatever the mechanism, the equivalent of "skip
+  the verification to finish faster" is forbidden.
+
+If `.claude/done-gate.md` is absent the default gate is the minimum honest
+bar — *every acceptance criterion is checked and a second person has
+approved* — and running on the default is a smell, not a destination.
+**Judgement**: no validator can read your gate for you. The checks nearest it
+are I-29 (`completed_by` was recorded) and I-37 (a task reaching `review/` or
+`completed/` with no real acceptance criteria is flagged).
+
+## 10. `blocked/`
+
+Blocked means an **external** dependency stops progress: a decision owed by
+someone else, a person or party unavailable, access only someone else can
+grant, an upstream task unfinished. Not blocked: "I don't know how" (recon),
+"this is hard" (the work), "I lost the thread" (park it to `backlog/`).
+
+**I-31** — a task in `blocked/` has a `## Blocker` section with at least one
+real line under it. Say what is blocking, who or what would unblock it, and
+when to check back. Without that section it is not blocked, it is abandoned,
+which is a different problem and a worse one.
+
+**I-36 (warn)** — a task sitting in `review/` more than 30 days. A state whose
+exit depends on someone else is the state that becomes a graveyard; this is
+the only ageing check there is.
+
+## 11. The completion report
+
+When a task passes the gate, the closer writes the report **into the task
+file, as a `## Completion report` section, before `bin/task pass` moves it.**
+v0.1.x mandated the report and never said where it went, so it went nowhere.
+It lives with the task and travels with it.
 
 ```markdown
-## TASK-XXX completion report
+## Completion report
 
 | | |
 |---|---|
-| **Name** | <descriptive name from the task spec> |
-| **Status** | ✅ Ready for review / ⚠️ Blocked / ❌ Failed |
-| **Category** | stub / spec / bug / hotfix |
+| **Outcome** | done / blocked / failed |
+| **Type** | change / defect / upkeep / inquiry / record |
 
 **Done-gate** (per `.claude/done-gate.md`)
-- <gate 1>: ✅/❌ · <evidence — command output, reviewer, doc link>
-- <gate 2>: ✅/❌ · <evidence>
+- <gate>: pass/fail · <evidence — what was produced, who approved>
 
-**What changed**
-- One-line bullets, the actual deltas
-
-**What you need to do next** (in order)
-1. Concrete action
-2. Concrete action
-
-**Things I noticed** (not blockers — can be empty)
-- ...
+**What changed** — the actual deltas, one line each
+**What to do next** (in order) — concrete actions
+**Things I noticed** — not blockers; may be empty
 ```
 
-Rules:
+- **Outcome is one of three words.** Never "almost", never "mostly". If the
+  criteria are not met the outcome is blocked or failed, and the report says why.
+- **Gate results are evidence, not adjectives.** Name the output, the
+  approver, the document — not the word "verified".
+- **Do not tick a box you did not check.**
+- **"What to do next" is not optional.** It is why a reader opens the report.
 
-- **Status** is one of three states. Never "almost ready" or "mostly
-  done." If acceptance criteria aren't met, status is ⚠️ Blocked or
-  ❌ Failed and the report says why.
-- **Done-gate results are evidence, not adjectives.** Cite the real
-  command output / the named approver / the produced artifact — not
-  "verified."
-- **Don't tick boxes you didn't check.** Same rule as the rest of this
-  file.
+**Judgement** — the validator checks `completed_by` (I-29) and warns on
+missing acceptance criteria (I-37). It cannot tell whether your report is true.
 
-## Audit log (mandatory)
+## 12. Scope, honesty, and the task-linked rule
 
-`tasks/AUDIT.md` is the curated, append-only chronological record of
-meaningful actions on the project — ships, milestones, rule changes,
-scaffolding events, incidents. Version-control history is the ground
-truth; this file is the human-readable layer on top.
+**Scope.** One task is one unit of finishable work; do not bundle unrelated
+work. Touch only the artifacts the task names — to touch anything else, add
+it to the task file with a one-line justification *first*. Do not improve
+adjacent work while you are in there, and do not add scope the acceptance
+criteria do not require. ("Artifacts" is deliberately neutral: source
+documents, contract clauses, care pathways, manuscript chapters — whatever
+this project produces.)
 
-### What to log
+Keep `active/` small. v0.1.x said "at most one per worker"; v1.0.0 has no
+owner field, so nothing can tell whether four active tasks are four people
+working or one person thrashing. That makes it advice, and it is labelled as
+advice instead of posing as a rule.
 
-- 📦 **Task ships** (a task reached `completed/`). One line per task.
-- 🚀 **Milestones / releases / publications** — whatever "shipped to the
-  world" means in this domain. Include the receipt (tag, matter number,
-  publication ref).
-- 📜 **Rule / process changes** in `task-rules.md` or the done-gate.
-- 🏗 **Major scaffolding** (new convention, new tooling affecting
-  everyone).
-- 🔥 **Hotfixes.** One line per hotfix, with a link to the postmortem.
-- ⚠️ **Incidents** and **honest tradeoff calls** future readers will
-  need to understand.
+**Honesty.** If the acceptance criteria cannot all be met, the task is **not**
+done: leave the boxes unticked, write the blocker, say so. If you find the
+task's premise is wrong, stop and write a blocker — do not silently redesign
+the work. Never mark verified what you did not verify; "verified" means you
+ran the gate and watched it pass, not that it looks like it would.
 
-### What NOT to log
+**Every change is task-linked.** Every change to an artifact this project
+produces, and to its operative configuration, is linked to a task — not the
+planned work only, also the one-line urgent correction, also the change made
+under pressure. The task is the audit trail; a change with no task is a hole
+in the record nobody can review later. It does not apply to internal notes,
+to the task files themselves, or to `.claude/`. A stub is acceptable, nothing
+is not: the bar is "a task exists", not "a task is fully specified".
 
-- Every change. Version-control history already has those.
-- Routine work that doesn't change behavior.
-- Drafts that don't ship.
+All three are **judgement**, the last one deliberately — how it is *enforced*
+depends on how your project records changes, so the mechanism belongs in
+`.claude/done-gate.md` or the domain extension. The rule holds whether or not
+anything automated is wired up. v0.1.x mandated a `tasks/CHANGES.md` ledger
+here and no layer ever created one; `tasks/history.tsv` (§15) now carries the
+part that can be recorded mechanically.
 
-### How to write entries
+## 13. Artifacts that need permission to change
 
-- **Newest entries on top** within their date section.
-- ISO date headers (`## YYYY-MM-DD`).
-- One to a few lines per entry, bullet form. Lead with the *what*, end
-  with the receipt.
-- Use the emoji set sparingly: 📦 ships, 🚀 milestones, 📜 rules,
-  🏗 scaffolding, 🔥 hotfixes, ⚠️ incidents/tradeoffs.
-- Don't backdate. If you forgot to log something, log it today with
-  `(retroactive)`.
+Touching one of these is a blocker, not autonomous work: **this task system's
+own files** (`.claude/task-rules.md`, `.claude/done-gate.md`,
+`.claude/task-templates/`, any `.claude/<domain>-task-rules.md`, the project's
+`CLAUDE.md`), and **whatever this project marks canonical or
+high-blast-radius** — whatever it treats as its source of truth, its operative
+configuration, anything under a compliance control. The done-gate or the
+project's `CLAUDE.md` names them; this Element cannot know them. If a task
+requires changing one, say so in its `## Blocker` and stop. **Judgement.**
 
-## Phase structure (mandatory)
+## 14. Intake and triage
 
-Phases are first-class. Every task **in `ROADMAP.md`** belongs to
-exactly one phase — no orphans, no "we'll figure out where this fits
-later." The one exception is the **triage holding area**: tasks parked
-in `tasks/triage/` are tracked but deliberately unphased and are not in
-`ROADMAP.md` until they graduate.
+**`tasks/intake.md`** is the pre-triage capture layer: one file, dated H2
+sections, one bullet per thought. No id, no file, no obligation beyond "I
+wrote it down". Triage costs a real thing — an id is spent and never reissued
+— so intake exists to cost nothing. When an entry matures, file it with
+`bin/task new` and delete the bullet; an entry that will not become work is
+just deleted, with no ceremony at all. That is the point of the layer.
 
-### Each phase has three things
+**`tasks/triage/`** holds tasks that are tracked but not yet taken on: they have an id,
+have no phase, and by **I-19** they must not have one. They are deliberately
+absent from `tasks/ROADMAP.md`. Graduate with `bin/task graduate --phase P`,
+which writes the phase and moves the file in one act; the ROADMAP line is
+part of the same graduation, and if you leave it out I-22 says so and
+`--fix` inserts it.
+Work that will not be done goes `bin/task close --resolution wont-do --by WHO`
+— `closed/` with the reason recorded, where v0.1.x sent it to a
+`.claude/wont-do.md` that nothing ever created. Sweep whenever triage grows
+past what you can read in one sitting: graduate, or close. Letting it grow is
+the failure mode; **judgement** on which is which.
 
-1. **A name.** "Phase N: \<short noun-phrase\>". Communicates the scope
-   at a glance.
-2. **A scope paragraph.** 2–4 sentences in `tasks/ROADMAP.md` directly
-   under the phase heading. Says what's in, what's out, and (when
-   useful) what success looks like. The scope is the *contract* — if a
-   task doesn't fit it, the task belongs in a different phase.
-3. **An ordered list of tasks.** Bulleted under the scope paragraph.
-   Each entry is `- TASK-NNN — <title>`. Order implies suggested ship
-   order.
+## 15. The record
 
-### `tasks/ROADMAP.md` is the registry
+**`tasks/history.tsv`** — append-only, six tab-separated columns:
 
-Phase membership lives in ROADMAP.md, nowhere else. Tasks do **not**
-declare their phase in their own spec file (that would drift). The
-skills (`/roadmap`, `/backlog`) parse ROADMAP to build the task→phase
-map. The invariant: *in `ROADMAP.md` ⟺ has a phase ⟺ triaged.*
-
-### Adding, creating, moving phases
-
-- **Add a task:** decide the phase first; if there's no phase for it
-  yet, file to triage and stop — don't force a phase. Otherwise add the
-  task line under that phase in `ROADMAP.md` and create the spec file in
-  `tasks/backlog/`.
-- **Create a phase:** pick a name, write the scope paragraph (in/out
-  explicit), add it to `ROADMAP.md` in sequence, then file tasks under
-  it. Don't create empty phases speculatively.
-- **Move a task between phases:** single edit to `ROADMAP.md` (remove
-  from old list, add to new). The spec file doesn't move — its directory
-  reflects *state*, not phase.
-
-## Categories (mandatory)
-
-Every task in `backlog/`, `active/`, `blocked/`, or `completed/` has a
-**category** in its frontmatter. The category answers: *what kind of
-work is this, and how do we treat it?*
-
-```yaml
----
-id: TASK-042            # or HOTFIX-042 for the Hotfix category
-category: spec          # stub | spec | bug | hotfix
-status: backlog         # triage | backlog | active | blocked | completed
----
+```
+date	id	from	to	actor	note
+2026-09-14	TASK-LIT-042	-	triage	para1	filed
+2026-09-20	TASK-LIT-042	active	review	jmr
+2026-09-23	TASK-LIT-042	review	completed	jmr	gate: partner sign-off 2026-09-22
 ```
 
-There is **no `phase:` field** in a task's frontmatter — phase
-membership lives in `ROADMAP.md` and nowhere else (see "Phase
-structure"). Recording a phase in the spec file too would create a
-second source of truth that drifts.
+Four things at once: the transition log; the audit trail a project with no
+version-control store has never had; the corroboration for `created`,
+`created_by` and `completed_by` (**I-35**); and the id-retirement ledger — an
+id that appears here is never issued again, even if its file was deleted, so
+an old reference can never silently resolve to unrelated work. **It is never
+hand-edited.** **I-32** checks its shape, **I-06** that every task on disk
+appears in it, **I-33** that every task's directory matches its last line.
 
-- **`stub`** — track lightly, no full spec. Title, brief description,
-  optional notes. Signals: don't expand this; it exists to be visible
-  and counted. Template: `task-templates/stub.md`. Stub tasks still
-  belong to a phase, appear in `ROADMAP.md`, and move through the state
-  machine.
-- **`spec`** — the default. Full work contract: as-a / I-want /
-  so-that, scope, acceptance criteria, verification plan. Template:
-  `task-templates/spec.md`. May start as stub-content and be expanded
-  close to execution.
-- **`bug`** — fix broken behavior. Spec shape plus: steps to reproduce,
-  expected vs. actual, root-cause notes, acceptance criteria for the
-  fix. Template: `task-templates/bug.md`. Bugs belong to the phase whose
-  work is broken — not a separate "bugs" phase.
-- **`hotfix`** — urgent fix that must ship now. Procedurally distinct:
-  `HOTFIX-NNN` id space, **no phase placement** (not in `ROADMAP.md`),
-  **direct routing to `tasks/active/`**, a dedicated template
-  (`task-templates/hotfix.md`: urgency justification, what's broken, the
-  smallest fix, rollback plan, post-fix verification), and a 🔥 AUDIT
-  entry when shipped. If the urgency dissipates, re-categorize as `bug`,
-  switch the id prefix to `TASK-NNN`, and route normally.
+**`tasks/.state/digests.tsv`** is a machine cache — regenerable, not yours to
+edit. It exists to make one field honest: **I-34** records each task's
+SHA-256, so a file that changed while its `updated` did not is a hard error.
+No modification times are consulted (177 of the 558 real files share one
+single modification date, so they carry almost no signal) and no version
+history is read. That is what
+makes `updated` a fact rather than a hope.
 
-### Stub-content vs. category
+## 16. Domain extensions
 
-The priority-signal rule (below) governs *content level* at filing time
-(stub-content vs. full-content). The category governs *intended shape*.
-Both apply: a `spec`-category task may be filed as stub-content and
-expanded later; a `hotfix` always has full content.
+Everything above is what is true of task management in *any* domain. A domain
+that needs more adds `.claude/<domain>-task-rules.md` and points at it from
+`CLAUDE.md`. What belongs there and not here: an engineering project's
+verification commands and change-review conventions; a firm's matter-number
+conventions, conflict checks, privilege handling and statutory deadlines as
+gate items; a clinic's clinical-rule validation, protected-information
+handling and sign-off; a writing project's continuity checks, reader pass and
+rights clearance.
 
-### Backwards compatibility
+Incident write-ups are a seam too. This file requires one for: any operative
+failure or harm event in this domain's terms; any correction that skipped the
+normal route; any loss or corruption of records; any problem found *after*
+the work was accepted rather than at the gate. Something caught *at* the gate
+needs no write-up — that is the system working. Where the write-up lives and
+what it must contain is for the done-gate or the extension to say; this
+Element creates no directory outside `tasks/` and `.claude/`, and will not
+invent one for you. A write-up with no action items is a story; real ones end
+with tasks, filed immediately. **Judgement.**
 
-Tasks with no `category:` frontmatter default to `category: spec`.
-Adding categories does not require re-filing existing tasks.
+## What no machine will catch
 
-## Adding tasks to the backlog (priority rule)
+Every invariant is cited inline at the rule it enforces: I-01 §1 · I-02 I-03
+I-11 §3 · I-04–I-08 §3 · I-09 files are UTF-8 and newline-terminated · I-10
+§1 · I-12 §6 · I-13 I-14 §7 · I-15–I-18 §3 · I-19–I-24 §4 · I-25 §5
+· I-26–I-28 §8 · I-29 I-30 §3 · I-31 I-36 §10 · I-32–I-35 §15 · I-37 §9 ·
+I-38 the digest ledger re-seeded itself this run.
 
-When the user says "add a task" without specifying urgency, **append to
-`tasks/backlog/` as a minimal stub and stop there.** Don't promote it
-ahead of others, don't draft a full spec (specs are expanded close to
-execution), don't reshuffle phase ordering to "make room," don't
-subdivide into siblings unless asked.
+These are the ones nobody checks but you:
 
-A minimal stub is title + 1-line user story + 1-line "why" +
-`STATUS: STUB — full spec drafted before execution`. Anything more is
-speculative.
-
-## Full spec vs. stub: the priority signal rule
-
-**Default: stub.** A full spec is created *only* if the user explicitly
-signals urgency — "emergency" / "urgent" / "do it now", "needs to ship
-before X", "this is next up", "top priority". These trigger both
-placement (ahead in the roadmap) and an immediate full spec.
-
-**Placement without spec:** "needs to ship before X" → place ahead of X,
-spec later. "X first, then this" → place after X, stub until X ships.
-"future phase" / "later" / no qualifier → backlog only, no
-re-sequencing, stub.
-
-When unsure, ask: *"backlog only, or should this jump the queue?"* — one
-round trip beats a wrong placement.
-
-## The triage holding area
-
-`tasks/triage/` holds tasks you want **tracked long-term but not yet
-triaged** — no phase, no priority, no commitment on when (or whether)
-they get worked. A triage task is real (a `TASK-NNN` id and a spec
-file, usually a stub) but lacks a phase, so by the phase rule it is
-**not in `ROADMAP.md`**.
-
-- **Filing to triage:** when the user files a task with no phase for it
-  yet — or can't name one — file it to `tasks/triage/` rather than
-  forcing a phase. A stub is the norm. Do **not** edit `ROADMAP.md`.
-- **Graduating out of triage:** either assign a phase + `mv` to
-  `backlog/` + add the `ROADMAP.md` line, or pull it straight to
-  `active/` (still assign a phase + ROADMAP line as part of starting).
-- Don't let triage rot. When it accumulates, run a triage pass:
-  graduate what matters, move what won't be done to `.claude/wont-do.md`.
-
-## The intake layer
-
-`tasks/intake.md` is the **pre-triage capture surface** — a single
-markdown file where raw notes, complaints, observations, and rough ideas
-land before anyone has decided whether they should become tasks. The
-lowest-friction layer in the lifecycle.
-
-Triage costs a small but real thing: an ID is spent, a file exists.
-Intake is a one-line append: a bullet in `intake.md`. No ID, no file, no
-commitment beyond "I wrote it down."
-
-### Format
-
-A single markdown file at `tasks/intake.md`. Loosely structured — "easy
-to add to" first, "consistent" second. H2 by date, bulleted entries with
-a bolded short title and a sentence of context:
-
-```markdown
-# Task Intake
-
-Pre-triage capture. Raw notes that may or may not become tasks. When an
-entry matures, promote it to triage via `/task promote` (creates a
-TASK-NNN in `tasks/triage/`) — or delete it.
-
-## 2026-06-18
-
-- **Intake feels noisy** — three half-ideas about onboarding; revisit.
-- **Recurring question from reviewers** — worth a standing answer.
-```
-
-### Promoting / dropping
-
-- `/task promote "<identifier>"` creates a `TASK-NNN` stub in
-  `tasks/triage/`, removes the entry from `intake.md`, and stops. The
-  new task has no phase, no category — decided at graduation.
-- `/task drop "<identifier>"` removes an entry without creating a task.
-  Optionally move the rationale to `.claude/wont-do.md`.
-
-## Postmortem rule (incidents get captured)
-
-The audit log records what shipped. The postmortem records what *broke*
-and what changed to prevent recurrence.
-
-### When to write one
-
-- Any operative failure, rollback, or harm event in the domain's terms.
-- Any hotfix (every 🔥 entry pairs with a postmortem).
-- Any data-loss / corruption / integrity event.
-- Any regression caught after shipping rather than at the done-gate.
-- Near-misses that revealed a real gap.
-
-Issues caught at the done-gate or in normal review do **not** need
-postmortems — that's the system working.
-
-### Where it lives, and linkage
-
-`docs/postmortems/YYYY-MM-DD-short-slug.md` (create the directory on
-first use; use `/postmortem` if the domain ships it). Every postmortem
-appends a ⚠️ entry to `tasks/AUDIT.md` linking the file, and
-hotfix-driven postmortems also link the 🔥 entry that triggered them.
-
-### Action items become tasks
-
-A postmortem with no action items isn't done — it's a story. Real
-postmortems end with concrete, owned, linked tasks. File them via
-`/task` immediately after drafting.
-
-## Orchestrator coordination notices (when mounted under an orchestrator)
-
-When this task system runs inside an Element coordinated by a parent
-orchestrator (per `CLAUDE.md`), the orchestrator may drop **read-only**
-coordination signals into this project's `.claude/` as
-`.claude/active-*.md` files (e.g. `active-migrations.md`).
-
-- **Read each `active-*.md` on session start and at task start;** surface
-  open entries in your orientation. Migrations open and close mid-task —
-  don't trust one early read.
-- **Treat as authoritative** for cross-Element state. To update state,
-  go back to the orchestrator — don't edit these files by hand or delete
-  them; they're auto-managed.
-- **Don't propagate** orchestrator state into local task specs or
-  `CLAUDE.md`. Reference, don't copy.
-
-If `CLAUDE.md` declares no orchestrator (solo project), this section
-doesn't apply; any `active-*.md` that appears is stale — flag it, don't
-read it.
-
-## Honest reporting
-
-- If acceptance criteria can't all be met, the task is **not done.**
-  Mark unchecked criteria, write a blocker, report it.
-- If you discover the task's premise is wrong, stop and write a blocker.
-  Do not silently redesign the work.
-- Never mark a checklist item complete that you didn't actually verify.
-- "Verified" means you ran the done-gate and saw it pass — not "it looks
-  like it should pass."
-
-## Domain extensions
-
-The portable core above is everything that is true of task management in
-*any* domain. A domain that needs more — stack-specific verification
-steps, additional gated artifacts, extra categories, naming overrides —
-adds a `.claude/<domain>-task-rules.md` extension file and points to it
-from `CLAUDE.md`. Read this file first, then the extension that matches
-the work at hand. The extension *adds to* and *refines* this file; it
-does not replace the lifecycle, the categories, or the done-gate
-contract.
-
-Examples of what belongs in an extension, not here:
-
-- **Software (`code-task-rules.md`):** branch/PR conventions, the exact
-  build/test commands, the `task-guard` pre-commit hook, schema-mirror
-  discipline, platform sub-extensions (`ios-`, `web-`).
-- **Legal (`legal-task-rules.md`):** matter-number id conventions,
-  conflict-check gates, privilege handling, filing deadlines as
-  done-gate items.
-- **Health (`health-task-rules.md`):** clinical-rule validation gates,
-  PHI handling, compliance sign-off as a done-gate item.
-
-Whatever the domain, the lifecycle and the discipline are the same. Only
-the done-gate and the extension change.
+- whether a task genuinely fits its phase's scope (§4)
+- whether the done-gate actually passed (§9)
+- whether the completion report is true (§11)
+- whether the work stayed in scope, and whether `active/` is honest (§12)
+- whether the criteria you ticked were verified (§12)
+- whether every change really is task-linked (§12)
+- whether a gated artifact was touched without permission (§13)
+- whether triage and intake are being swept (§14)

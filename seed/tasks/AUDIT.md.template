@@ -1,0 +1,71 @@
+# Audit log
+
+The narrative ledger for this project: what happened, when, and why it
+mattered. Append-only, newest date first.
+
+This is not `tasks/history.tsv`. That file is written by the tooling and
+records every transition mechanically, one line each, whether or not it
+meant anything. This file is written by **you**, and records only the things
+a person would want to find again in a year -- the decisions, the milestones,
+the moments something changed shape. The transition log answers *what moved
+when*; this answers *what happened and why*.
+
+## How to write an entry
+
+- **Newest date on top.** Date headings are `## YYYY-MM-DD`.
+- **One bullet per event**, opening with a legend glyph and a bolded subject.
+- **Say what is verifiable.** An entry that cannot be checked later is a
+  story, not a record. Name the task id, the artifact, the person.
+- **Never rewrite an entry.** If an earlier entry turns out to be wrong, add
+  a new one today that says so. The wrong entry staying visible is the point.
+
+## Legend
+
+| Glyph | Use it for |
+|---|---|
+| ✅ | A task reached `completed/`: the done-gate passed. |
+| 🚫 | A task reached `closed/`: it ended without being done. Say which resolution, and why. |
+| 🚀 | A milestone: something went out, opened, or went into service. |
+| 🧭 | A phase opened, finished, or had its scope changed. |
+| 📜 | A rule, gate, convention or threshold changed. Say what it was before. |
+| 🏗 | A structural change to the ledger, or to how the project is laid out. |
+| 🔥 | Something went wrong and was dealt with urgently. Say what was done, and what is still owed. |
+| 🧾 | A decision, agreement or finding worth citing later. Link the durable copy. |
+
+Use these eight and no others. A glyph set that keeps growing stops being
+scannable, which is the only thing a glyph is for.
+
+Four of the eight (🚀 📜 🏗 🔥) are the ones already in use in older ledgers,
+kept deliberately so an existing log does not have to be rewritten. If yours
+uses 📦 for a task that shipped, that is ✅ here; if it uses ⚠️ for an
+incident, that is 🔥. Old entries stay exactly as they are -- this log is
+append-only, and rewriting history to match a new legend would be the one
+thing it exists to prevent.
+
+## Worked example
+
+Copy the shape, not the content:
+
+```
+  ## 2027-03-14
+
+  - 🧾 **Intake wording settled** -- after TASK-LIT-038's inquiry, first
+    contact is recorded in `intake.md` and only promoted once a conflict
+    check clears. Durable copy: `reference/intake-policy.md`. Supersedes the
+    verbal practice in use since last spring.
+  - ✅ **TASK-LIT-042 completed** -- protective order amended and filed;
+    gate was partner sign-off, given by jmr on 2027-03-13.
+  - 🚫 **TASK-LIT-031 closed** -- `duplicate` of TASK-LIT-042, which covers
+    the same amendment with the third-party production included.
+  - 🏗 **Ledger split by matter** -- `target:` is now declared in
+    `tasks.config.yml`; every task outside triage/ names its matter.
+  - 🧭 **Phase DISC finished** -- all nine tasks terminal. Phase REVIEW opens
+    Monday; its scope paragraph is in `ROADMAP.md`.
+```
+
+> The two-space indent above is only there to keep the example out of the
+> live log. Write real entries flush left.
+
+---
+
+_No entries yet. The first one is usually the day the ledger went into use._

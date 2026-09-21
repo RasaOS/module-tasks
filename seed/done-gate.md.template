@@ -1,83 +1,127 @@
-# Done-Gate
+# Done-gate
 
-**This file is yours.** `rasa.module.tasks` ships the portable task
-lifecycle (`.claude/task-rules.md`), but it deliberately does not decide
-what *done* means in your domain — that is the one thing that varies.
-This file is where you define it.
+**This file is yours.** `rasa.module.tasks` ships the portable lifecycle in
+`.claude/task-rules.md`, but it deliberately does not decide what *done*
+means here -- that is the one thing that varies between every project that
+mounts it. This is where you decide.
 
-A task leaves `active/` for `completed/` only when **both** hold:
+## Where the gate runs
 
-1. every acceptance criterion in the task spec is met and verified, and
+A task in `review/` has had its work finished. It moves to `completed/` only
+when **both** of these hold:
+
+1. every acceptance criterion on the task is met and actually verified, and
 2. **every gate below passes.**
 
-Each gate must be **objectively checkable** — a command that exits zero,
-a named reviewer's approval, a produced document — never a feeling.
-Never bypass a gate to ship faster.
+If a gate does not pass, the task goes back to `active/` with the failing
+gate named. It does not sit in `review/` waiting to be forgiven, and it does
+not proceed with a gate waived. A gate you are willing to step around is not
+a gate -- delete it from this file and be honest about the bar instead.
+
+Each gate must be **objectively checkable**: something that plainly succeeds
+or fails, a named person's approval, or a document that now exists. Never a
+feeling, and never "looks fine".
+
+## Where the evidence goes
+
+Whatever satisfied the gate is recorded in the task's `## Notes` section --
+what was checked, what was observed, who approved, when. The command that
+moves the task also writes one line to `tasks/history.tsv`, and its `note`
+column is where you name the gate: `gate: second read 2027-03-13, no
+findings`. Between the two, a reader in a year can tell what "done" actually
+meant on the day.
 
 ---
 
-## Gates (EDIT THIS)
+## Gates
 
-> Replace the default below with your domain's real gates. Until you do,
-> the minimum honest bar applies: acceptance criteria checked **and** a
-> second party has reviewed and approved. Running on the default is a
-> smell, not a destination.
+> **Edit this section.** Until you do, the default below applies. It is the
+> most honest bar that one person working alone can genuinely satisfy: it
+> invents nobody, and no item on it is passed by feeling finished. Running on
+> the default is a reasonable start and a poor destination.
 
-- [ ] **Acceptance criteria** — every checklist item in the task spec is
-      satisfied and individually verified.
-- [ ] **Independent review** — a second party (not the author) has
-      reviewed the work and approved.
-
----
-
-## Examples — delete the ones you don't need
-
-> Pick the block that matches your domain, paste its gates above, and
-> tune them. These are illustrative, not prescriptive.
-
-### Software domain (`rasa.domain.code`)
-
-```markdown
-- [ ] Build — `<project build command>` succeeds with no new warnings.
-- [ ] Verification suite — `<project test command>` passes headless.
-- [ ] Local run — the implemented flow boots and works.
-- [ ] No console / log errors on the affected paths.
-- [ ] PR opened with task link, acceptance checklist, and verification output.
-```
-
-### Legal domain (`rasa.domain.legal`)
-
-```markdown
-- [ ] Conflict check cleared for the matter.
-- [ ] Cite-check / authority verification complete.
-- [ ] Privilege and confidentiality handling confirmed.
-- [ ] Supervising attorney review and sign-off.
-- [ ] Filing-deadline / docketing requirements satisfied.
-```
-
-### Health domain (`rasa.domain.health`)
-
-```markdown
-- [ ] Clinical-rule validation passes for the affected pathway.
-- [ ] PHI handling reviewed (no leakage; audit trail intact).
-- [ ] Compliance / regulatory sign-off recorded.
-- [ ] Clinical reviewer approval.
-```
-
-### Writing domain (`rasa.domain.writer`)
-
-```markdown
-- [ ] Continuity check against the bible (characters, timeline, canon).
-- [ ] Voice / style pass against the project's voice ledger.
-- [ ] Editorial review and approval.
-```
+- [ ] **Criteria met** -- every acceptance criterion on the task is checked,
+      and each one names in `## Notes` what was observed and where.
+- [ ] **Checked from cold** -- the result was verified from a clean start,
+      not from the state you happened to already be in.
+- [ ] **Slept on** -- at least one clear break between finishing the work and
+      passing this gate, and the work re-read against the acceptance criteria
+      after that break. Record the interval.
+- [ ] **Nothing else touched** -- nothing outside "Artifacts expected to
+      change" was altered, or the task was amended first and says why.
+- [ ] **Closing note written** -- `## Notes` says what was done, what was
+      verified and how, and what was deliberately left undone.
 
 ---
 
-## Enforcement note
+## Examples
 
-How you *enforce* "every change is task-linked" is also domain-specific
-and belongs here or in your `.claude/<domain>-task-rules.md`: a software
-domain may wire a pre-commit `task-guard` hook; a domain whose changes
-are document revisions enforces it at its own checkpoint. The rule holds
-either way (see `.claude/task-rules.md` → "Every change is task-linked").
+Pick the block nearest your project, paste its gates above the line, and
+tune them. These are illustrations, not a menu of approved answers.
+
+### A second person is available
+
+The strongest gate there is, when there is genuinely somebody else. Do not
+adopt it if that person would be you wearing a different hat.
+
+```markdown
+- [ ] Acceptance criteria met and individually verified.
+- [ ] A second person, who did not do the work, has examined it and approved.
+- [ ] Their approval is recorded on the task: who, when, and what they looked at.
+```
+
+### A practice
+
+```markdown
+- [ ] Conflicts cleared for the matter.
+- [ ] Every authority cited has been checked against the source.
+- [ ] Privilege and confidentiality handling confirmed for everything produced.
+- [ ] Supervising practitioner has signed off.
+- [ ] Every filing or service deadline the work touches has been diarised.
+```
+
+### A clinic
+
+```markdown
+- [ ] The affected pathway validates against the current clinical rules.
+- [ ] Handling of identifiable patient material reviewed: none leaked into
+      the ledger, and the access record is intact.
+- [ ] Regulatory sign-off recorded where the change requires one.
+- [ ] A clinical reviewer has approved.
+```
+
+### A manuscript
+
+```markdown
+- [ ] Continuity checked against the bible: people, timeline, established fact.
+- [ ] Voice pass against the project's own voice notes.
+- [ ] Read aloud once, start to finish, without stopping to fix anything.
+- [ ] Editorial approval, or -- working alone -- a re-read after a full day away.
+```
+
+### Work that a machine can check
+
+If some part of your work can be checked mechanically, say so precisely: the
+exact command, and what its success means. Name it here rather than in the
+task, so that every task inherits the same bar.
+
+```markdown
+- [ ] `<the project's own verification command>` succeeds, with no new warnings.
+- [ ] The check was run from a clean starting state, not an incremental one.
+- [ ] Its output is recorded in the task's `## Notes`.
+```
+
+---
+
+## Two things this file is not
+
+**It is not a place for the lifecycle rules.** How tasks move, what the
+directories mean, what the frontmatter must contain -- all of that is in
+`.claude/task-rules.md` and is the same everywhere. Only the definition of
+*verified* belongs here.
+
+**It is not the place for your project's working conventions at large.** If
+your project needs a broader set of house rules on top of the portable
+lifecycle, put them in `.claude/<project>-task-rules.md` and keep this file
+to the gate itself. A done-gate that has grown into a style guide stops being
+read at the moment it matters.

@@ -8,3 +8,7 @@
 
 # Temp install artifacts
 .claude/rasa.lock.json
+
+# Python bytecode from running the shipped stdlib scripts
+__pycache__/
+*.py[cod]
