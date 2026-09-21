@@ -155,6 +155,29 @@ disagree. Five stale "sole phase registry" claims removed across
 This is the same correction `rasa.domain.code` made in its v0.50.0 for the same
 reason, so the two Elements now agree rather than contradicting each other.
 
+#### Rule-parity audit: 1 of 14 candidates was real
+
+A section-by-section audit against `rasa.domain.code` flagged 14 rules as
+having no counterpart here. Re-checked one at a time, **thirteen were false
+positives** — the detector matched `- **bold**` bullets and short substrings,
+and this module states the same rules in prose, at a higher abstraction, or in
+different words:
+
+- **Hotfix procedure (5)** — already covered: `HOTFIX-NNN` id space, no phase
+  placement, direct routing to `active/`, its own template, the 🔥 audit line.
+- **Gated files (5)** — covered *better* here. domain-code enumerates
+  engineering file types (`firebase.json`, `package.json`, `vite.config`);
+  this module says "whatever the domain marks as canonical / high-blast-radius",
+  which is the portable form and subsumes them.
+- **Placement signals (3)** — covered, in prose rather than bullets.
+
+The one real gap is ported: **verification results must be real numbers, not
+"it passed."** A summary is a claim, and a reader downstream cannot tell a true
+one from a false one. It matters most where a loop or a reviewer decides
+whether work is done by reading the report — an unevidenced claim is exactly
+what such a reader wrongly accepts. Worded for any domain: "3 of 3 reviewers
+signed off" is as much a real number as a test count.
+
 #### One thing deliberately NOT ported
 
 - **`task-guard` is not moved here.** "Domain extensions" already names it as

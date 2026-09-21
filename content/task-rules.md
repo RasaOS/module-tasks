@@ -232,6 +232,13 @@ Rules:
 - **Done-gate results are evidence, not adjectives.** Cite the real
   command output / the named approver / the produced artifact — not
   "verified."
+- **Verification results are real numbers, not "it passed."** Cite the
+  actual counts and the actual output from the run — "47 passed, 0
+  failed, 12.3s", not "tests pass"; "3 of 3 reviewers signed off", not
+  "approved". A summary is a claim, and a reader downstream has no way to
+  tell a true one from a false one. Where a loop or a reviewer decides
+  whether work is done by reading this report, an unevidenced claim is
+  the thing it will wrongly accept.
 - **Don't tick boxes you didn't check.** Same rule as the rest of this
   file.
 
