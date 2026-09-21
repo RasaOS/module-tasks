@@ -220,22 +220,44 @@ def repo_inventory():
     return sorted(set(walked) | set(tracked)), source
 
 
-def read_text(rel):
-    """File contents as text, or None when it is binary/unreadable/huge."""
+SCAN_CAP = 8 * 1024 * 1024
+
+# Files a token scan could not read. A BINARY file is a legitimate skip — there
+# are no source tokens in a PNG. A file that is oversized or not valid UTF-8 is
+# NOT: it ships, a reader will read it, and the gate simply cannot see inside.
+# Skipping those silently made "N files scanned" a lie and left the hard rule
+# bypassable by a single oversized file, so they are collected and failed on.
+UNSCANNABLE = []
+
+
+def read_text(rel, record_unscannable=False):
+    """File contents as text, or None when it cannot be scanned.
+
+    With record_unscannable=True, anything skipped for a reason OTHER than
+    being binary is appended to UNSCANNABLE so the caller can fail on it.
+    """
     full = os.path.join(REPO_ROOT, rel)
+
+    def skip(reason):
+        if record_unscannable:
+            UNSCANNABLE.append((rel, reason))
+        return None
+
     try:
-        if os.path.getsize(full) > 2 * 1024 * 1024:
-            return None
+        size = os.path.getsize(full)
+        if size > SCAN_CAP:
+            return skip("%.1f MB exceeds the %d MB scan cap"
+                        % (size / 1048576.0, SCAN_CAP // 1048576))
         with open(full, "rb") as handle:
             raw = handle.read()
-    except OSError:
-        return None
+    except OSError as exc:
+        return skip("unreadable (%s)" % (exc.strerror or exc))
     if b"\0" in raw:
-        return None
+        return None  # binary: genuinely nothing for a token scan to find
     try:
         return raw.decode("utf-8")
     except UnicodeDecodeError:
-        return None
+        return skip("not valid UTF-8")
 
 
 def allowed(rel, token):
@@ -252,7 +274,7 @@ def scan(paths, table):
     for rel in paths:
         if rel in SCAN_SKIP:
             continue
-        text = read_text(rel)
+        text = read_text(rel, record_unscannable=True)
         if text is None:
             continue
         for lineno, line in enumerate(text.splitlines(), 1):
@@ -522,11 +544,28 @@ def main():
                       % (len(shipped), inventory_source))
 
     # ── 2. dangling ────────────────────────────────────────────────────────
-    dangling = ["%s.files[%d] `from` does not exist: %s"
-                % (section, index, entry.get("from"))
-                for section, index, entry in entries
-                if not os.path.exists(os.path.join(REPO_ROOT, str(entry.get("from"))))]
-    report.check("dangling      every rasa.json `from` exists", dangling)
+    # `from` must exist AND stay inside the Element. os.path.join(root, "/etc/x")
+    # silently discards the root and returns "/etc/x", so an absolute — or
+    # ../-bearing — `from` would resolve to a real file outside the Element and
+    # sail through an existence check. Same class as the `to` escape in bin/init.
+    dangling = []
+    element_root = os.path.realpath(REPO_ROOT)
+    for section, index, entry in entries:
+        raw_from = str(entry.get("from"))
+        label = "%s.files[%d] `from`" % (section, index)
+        if os.path.isabs(raw_from):
+            dangling.append("%s is absolute, so it escapes the Element: %s"
+                            % (label, raw_from))
+            continue
+        full = os.path.realpath(os.path.join(REPO_ROOT, raw_from))
+        if full != element_root and not full.startswith(element_root + os.sep):
+            dangling.append("%s resolves outside the Element: %s -> %s"
+                            % (label, raw_from, full))
+            continue
+        if not os.path.exists(full):
+            dangling.append("%s does not exist: %s" % (label, raw_from))
+    report.check("dangling      every rasa.json `from` exists, inside the Element",
+                 dangling)
 
     # ── 3. schema ──────────────────────────────────────────────────────────
     inline = inline_schema_checks(manifest)
@@ -638,11 +677,16 @@ def main():
     # ── 9. the hard rule ───────────────────────────────────────────────────
     shipped_paths = [p for p in paths
                      if p.startswith("content/") or p.startswith("seed/")]
+    del UNSCANNABLE[:]
     hard_hits, hard_allowed = scan(shipped_paths, HARD_RULE)
+    # A shipped file the scan could not read is a hole in the rule, not a pass:
+    # one oversized file would otherwise carry any content past the gate.
+    blind = ["%s — the hard-rule scan could not read this file: %s"
+             % (rel, reason) for rel, reason in UNSCANNABLE]
     report.check("hard-rule     content/ + seed/ carry no engineering token",
-                 ["%s:%d  %s  |  %s" % hit for hit in hard_hits],
-                 note="%d files scanned, %d allowed by ALLOWLIST"
-                      % (len(shipped_paths), len(hard_allowed)))
+                 ["%s:%d  %s  |  %s" % hit for hit in hard_hits] + blind,
+                 note="%d files scanned, %d unreadable, %d allowed by ALLOWLIST"
+                      % (len(shipped_paths) - len(blind), len(blind), len(hard_allowed)))
 
     exit_code = report.emit()
 
