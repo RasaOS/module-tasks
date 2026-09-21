@@ -704,7 +704,17 @@ class Ledger(object):
         rows = self.history_rows()
         return rows[-1]["date"] if rows else None
 
-    def append_history(self, when, task_id, from_stage, to_stage, actor, note):
+    def precheck_history_date(self, when):
+        """Refuse an append that would break date order — BEFORE anything moves.
+
+        This lived inside append_history, which every verb calls *last*, after
+        the rename and the frontmatter write. So the abort fired with the file
+        already moved and no log line written: a stage change with no record,
+        which is precisely the violation this Element exists to make
+        impossible — announced with the words "nothing was written". The check
+        has to run before the first mutation; append_history keeps it too, as
+        a belt-and-braces assert on a path that should now be unreachable.
+        """
         last = self.last_history_date()
         if last and last > when:
             raise Abort(
@@ -713,6 +723,9 @@ class Ledger(object):
                 "log (or the clock) first; nothing was written."
                 % (self.history_path, last, when)
             )
+
+    def append_history(self, when, task_id, from_stage, to_stage, actor, note):
+        self.precheck_history_date(when)
         fresh = not os.path.isfile(self.history_path)
         row = "\t".join(
             [
@@ -1130,6 +1143,10 @@ def apply_transition(
     runs to completion or rolls the move back.
     """
     when = when or today_iso()
+    # Every precondition must be settled before the first mutation. This one
+    # used to live in append_history, which runs last — so it aborted with the
+    # file already moved. See Ledger.precheck_history_date.
+    ledger.precheck_history_date(when)
     old_path = task.path
     new_path = old_path
     moved = False
@@ -1230,6 +1247,10 @@ def render_new_body(ledger, args, task_id, title, phase):
 
 
 def verb_new(ledger, args):
+    # Before the id lock is taken and the file is created with O_CREAT|O_EXCL —
+    # `new` logs last too, so without this it would leave an unlogged task file
+    # on disk and report that nothing was written.
+    ledger.precheck_history_date(today_iso())
     title = " ".join(args.title).strip()
     if not title:
         raise Abort("a task needs a title")
@@ -1432,6 +1453,31 @@ def effective_priority(task, supplied):
     return str(value) if value else "normal"
 
 
+def _precheck_registry(ledger, task, to_stage):
+    """Fail on a phase the registry cannot accept — BEFORE anything moves.
+
+    _sync_registry runs after apply_transition and outside its rollback, so a
+    task whose phase heading had been renamed away produced the worst possible
+    outcome: the file moved, the frontmatter was rewritten, the history line
+    was appended, the digest was updated — and then the command aborted
+    nonzero having skipped only the ROADMAP edit, leaving the ledger red.
+    Verbs that never call ensure_phase_for (park, demote, reject) had no other
+    guard. This runs the same lookup first, so the refusal costs nothing.
+    """
+    if to_stage == "triage":
+        return
+    phase = task.get("phase")
+    if not phase or ledger.roadmap_lines() is None:
+        return
+    if str(phase) not in ledger.roadmap_phases():
+        raise Abort(
+            "%s declares no `## Phase %s` heading, which %s needs before it can "
+            "record the move. Add the heading (or re-phase the task) first; "
+            "nothing was written."
+            % (ledger.roadmap_path, phase, task.get("id"))
+        )
+
+
 def _sync_registry(ledger, task, from_stage, to_stage):
     """Keep the phase registry's membership line in step with the move."""
     task_id = task.get("id")
@@ -1452,6 +1498,7 @@ def common_move(ledger, args, verb, to_stage, note, mutate=None, task=None):
     actor = resolve_actor(ledger, args.by)
     check_actor(ledger, actor, "actor")
     with Lock(ledger, quiet=args.quiet):
+        _precheck_registry(ledger, task, to_stage)
         apply_transition(ledger, task, from_stage, to_stage, actor, note, mutate)
         _sync_registry(ledger, task, from_stage, to_stage)
     report(task, from_stage, to_stage, actor, note)
@@ -1691,6 +1738,7 @@ def verb_pass(ledger, args):
 
     from_stage = task.stage
     with Lock(ledger, quiet=args.quiet):
+        _precheck_registry(ledger, task, "completed")
         apply_transition(
             ledger, task, from_stage, "completed", actor, "gate: " + evidence, mutate
         )
@@ -1757,6 +1805,7 @@ def verb_close(ledger, args):
     if reason:
         note += ": " + reason
     with Lock(ledger, quiet=args.quiet):
+        _precheck_registry(ledger, task, "closed")
         apply_transition(ledger, task, from_stage, "closed", actor, note, mutate)
         _sync_registry(ledger, task, from_stage, "closed")
     report(task, from_stage, "closed", actor, note)
@@ -1803,6 +1852,7 @@ def verb_reopen(ledger, args):
 
     from_stage = task.stage
     with Lock(ledger, quiet=args.quiet):
+        _precheck_registry(ledger, task, destination)
         apply_transition(
             ledger, task, from_stage, destination, actor, "reopened: " + reason, mutate
         )
