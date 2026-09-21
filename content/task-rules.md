@@ -353,6 +353,20 @@ re-filing.
 `#` line is a YAML comment, but title parsers commonly take the first
 `# ` line as the task's title. Keep comments inline, as above.
 
+**Writing these fields.** This module defines the contract; it ships no
+mechanical writer, and that is deliberate rather than an omission. Editing
+frontmatter by hand or by agent is fine for a human-paced workflow. A domain
+that *automates* task management needs more than that — an upsert that inserts
+a missing key rather than silently doing nothing, refuses an unknown key, and
+fails loudly on a file with no frontmatter block. `rasa.domain.code` supplies
+one (`task-enforce.sh stamp <id> <key> <value>`) and is the reference shape.
+
+The failure worth knowing about: a writer that only *rewrites* an existing key
+and silently no-ops on a missing one will report success while changing
+nothing, so `outcome` stays `unrecorded` forever and every reader believes the
+field is simply unset. If you build one, make inserting the missing key the
+first thing you test.
+
 There is **no `phase:` field** in a task's frontmatter — phase
 membership lives in `ROADMAP.md` and nowhere else (see "Phase
 structure"). Recording a phase in the spec file too would create a
@@ -539,6 +553,13 @@ coordination signals into this project's `.claude/` as
 If `CLAUDE.md` declares no orchestrator (solo project), this section
 doesn't apply; any `active-*.md` that appears is stale — flag it, don't
 read it.
+
+> **The reader is live; the writer is not.** As of this version no shipped
+> Element *writes* `active-*.md`. The protocol above is the read side, and
+> it is correct — but "auto-managed" describes an intent, not a mechanism
+> that currently exists. Treat an `active-*.md` you find as hand-placed
+> until an orchestrator that emits them ships, and do not wait for one to
+> update a file on your behalf.
 
 ## Honest reporting
 
