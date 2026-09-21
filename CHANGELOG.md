@@ -204,6 +204,19 @@ that rule lived only in prose, which is to say it lived nowhere. Exemptions
 are a named path, a named token and a written reason in one table, and every
 suppressed hit is still printed.
 
+The gate was then attacked with injected defects rather than read, which
+found two ways to walk past it — both now closed. The hard-rule scan
+silently skipped any file it could not read while still counting it as
+scanned, so a single oversized file could carry anything through: a 3.4 MB
+`content/` file full of `git commit`, `test suite` and `deploy to ios`
+passed clean. A binary file is a legitimate skip; an oversized or
+non-UTF-8 one is a blind spot, and those now fail the check by name. And
+`from` was existence-checked with `os.path.join(root, value)`, which
+discards the root for an absolute path — so `"from": "/etc/hosts"` resolved
+to a real file and passed, meaning a manifest could name, and `bin/init`
+would copy, a file from anywhere on the machine. `from` must now be
+relative and resolve inside the Element.
+
 ### Migration
 
 `bin/migrate-tasks` converts a 0.1.x ledger. It is **Element-owned and never
